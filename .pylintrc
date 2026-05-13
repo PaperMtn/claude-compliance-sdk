@@ -13,7 +13,6 @@ load-plugins =
 disable =
     # Black owns formatting.
     line-too-long,
-    bad-continuation,
     # Mypy owns type checking and import resolution.
     import-error,
     no-name-in-module,
