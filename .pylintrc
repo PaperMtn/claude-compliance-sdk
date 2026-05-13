@@ -1,0 +1,69 @@
+# Google-flavoured, pragmatic Pylint config for anthropic-compliance-sdk.
+# Rules that fight Black, duplicate mypy, or generate noise for SDK code are disabled.
+
+[MAIN]
+py-version = 3.11
+jobs = 0
+persistent = yes
+suggestion-mode = yes
+load-plugins =
+
+[MESSAGES CONTROL]
+# Disable rules that conflict with Black, duplicate mypy, or are noisy for SDK code.
+disable =
+    # Black owns formatting.
+    line-too-long,
+    # Mypy owns type checking and import resolution.
+    import-error,
+    no-name-in-module,
+    # Resource group classes are intentionally small.
+    too-few-public-methods,
+    # Constructors with many config flags are normal for SDK clients.
+    too-many-arguments,
+    too-many-positional-arguments,
+    too-many-instance-attributes,
+    # SDK methods often forward many kwargs as query parameters.
+    too-many-locals,
+    # Subclassing Exception is fine.
+    broad-exception-raised,
+    # `fixme` for in-flight TODOs.
+    fixme,
+    # Duplicate-code triggers across sync/async parallel methods by design.
+    duplicate-code
+
+[FORMAT]
+max-line-length = 100
+indent-string = "    "
+
+[BASIC]
+# Google style: snake_case for functions/methods/variables, PascalCase for classes.
+function-naming-style = snake_case
+method-naming-style = snake_case
+variable-naming-style = snake_case
+argument-naming-style = snake_case
+const-naming-style = UPPER_CASE
+class-naming-style = PascalCase
+module-naming-style = snake_case
+# Underscore-prefixed names allowed for internal/private.
+good-names = i,j,k,e,_,fp,fd,id,ip
+
+[DESIGN]
+max-args = 12
+max-attributes = 15
+max-public-methods = 30
+max-returns = 8
+max-branches = 14
+
+[REPORTS]
+output-format = colorized
+reports = no
+score = no
+
+[LOGGING]
+logging-format-style = new
+
+[STRING]
+check-quote-consistency = no
+
+[TYPECHECK]
+ignored-modules = httpx
