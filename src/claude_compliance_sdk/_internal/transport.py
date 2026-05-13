@@ -3,30 +3,30 @@
 Two concrete classes — :class:`SyncTransport` and :class:`AsyncTransport`
 — wrap :class:`httpx.Client` and :class:`httpx.AsyncClient` respectively.
 Each exposes a single ``request()`` entry point used by every resource
-group, with header injection, error mapping, and ``request_id`` lift
-handled in one place so resources stay thin.
+group, with header injection, retry handling, error mapping, and
+``request_id`` lift handled in one place so resources stay thin.
 
-Retry and rate-limit hooks land in Phase 2.3 and 2.4. For now the
-transport sends a single request per call. ``max_retries`` and
-``rate_limit_rpm`` are accepted in ``__init__`` so the public client
-config can flow through unchanged when those layers wire in.
+Rate-limit hook lands in Phase 2.4. ``rate_limit_rpm`` is accepted in
+``__init__`` so the public client config flows through unchanged when
+the limiter wires in.
 """
 
 from __future__ import annotations
 
+import asyncio
 import platform
+import time
 from typing import Any, Mapping
 
 import httpx
 
-from claude_compliance_sdk._internal.base_transport import (
-    BaseAsyncTransport,
-    BaseTransport,
-)
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.retry import RetryPolicy
 from claude_compliance_sdk.exceptions import (
     APIConnectionError,
     APIError,
     APITimeoutError,
+    RateLimitError,
 )
 from claude_compliance_sdk.version import __version__ as _SDK_VERSION
 
@@ -56,12 +56,18 @@ def _decode_body(response: httpx.Response) -> Any:
         return response.text
 
 
-def _raise_for_error(response: httpx.Response) -> None:
-    raise APIError.from_response(
+def _build_api_error(response: httpx.Response) -> APIError:
+    return APIError.from_response(
         status_code=response.status_code,
         headers=response.headers,
         body=_decode_body(response),
     )
+
+
+def _wrap_transport_exception(exc: httpx.HTTPError) -> APIConnectionError:
+    if isinstance(exc, httpx.TimeoutException):
+        return APITimeoutError(f"Request timed out: {exc}")
+    return APIConnectionError(f"Connection failed: {exc}")
 
 
 class SyncTransport(BaseTransport):
@@ -78,8 +84,9 @@ class SyncTransport(BaseTransport):
         timeout: Per-request timeout, in seconds.
         anthropic_version: Value sent in the ``anthropic-version``
             header.
-        max_retries: Accepted now; consumed by the retry layer in Phase
-            2.3. Stored as :attr:`max_retries`.
+        max_retries: Maximum retries after the initial attempt. ``0``
+            disables retries. Passed straight into the
+            :class:`RetryPolicy`.
         rate_limit_rpm: Accepted now; consumed by the rate-limit layer
             in Phase 2.4. Stored as :attr:`rate_limit_rpm`.
     """
@@ -101,6 +108,7 @@ class SyncTransport(BaseTransport):
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
+        self._retry_policy: RetryPolicy = RetryPolicy(max_retries=max_retries)
 
     def request(
         self,
@@ -132,32 +140,54 @@ class SyncTransport(BaseTransport):
             :class:`httpx.Response` when ``stream=True``.
 
         Raises:
-            APIError: On any non-2xx response. The subclass mirrors the
-                status code.
-            APITimeoutError: When the request exceeds ``timeout``.
-            APIConnectionError: On any other transport-level failure.
+            APIError: On any non-2xx response (after retries exhausted).
+                The subclass mirrors the status code.
+            APITimeoutError: When the request exceeds ``timeout`` after
+                retries.
+            APIConnectionError: On any other transport-level failure
+                after retries.
         """
-        request = self._client.build_request(
-            method, path, params=params, json=json, headers=headers
-        )
-        try:
-            response = self._client.send(request, stream=stream)
-        except httpx.TimeoutException as exc:
-            raise APITimeoutError(f"Request timed out: {exc}") from exc
-        except httpx.HTTPError as exc:
-            raise APIConnectionError(f"Connection failed: {exc}") from exc
+        retry_index = 0
+        while True:
+            try:
+                response = self._client.send(
+                    self._client.build_request(
+                        method, path, params=params, json=json, headers=headers
+                    ),
+                    stream=stream,
+                )
+            except httpx.HTTPError as exc:
+                if self._retry_policy.should_retry_exception(
+                    retry_index=retry_index, method=method, exc=exc
+                ):
+                    time.sleep(self._retry_policy.compute_delay(retry_index=retry_index))
+                    retry_index += 1
+                    continue
+                raise _wrap_transport_exception(exc) from exc
 
-        if response.is_error:
-            # The error path needs the body, so any streaming response
-            # must be drained before we can decode it.
+            if response.is_error:
+                if stream:
+                    response.read()
+                    response.close()
+                api_error = _build_api_error(response)
+                if self._retry_policy.should_retry_status(
+                    retry_index=retry_index, method=method, status_code=response.status_code
+                ):
+                    retry_after = (
+                        api_error.retry_after if isinstance(api_error, RateLimitError) else None
+                    )
+                    time.sleep(
+                        self._retry_policy.compute_delay(
+                            retry_index=retry_index, retry_after=retry_after
+                        )
+                    )
+                    retry_index += 1
+                    continue
+                raise api_error
+
             if stream:
-                response.read()
-                response.close()
-            _raise_for_error(response)
-
-        if stream:
-            return response
-        return _decode_body(response)
+                return response
+            return _decode_body(response)
 
     def close(self) -> None:
         """Shut the underlying ``httpx.Client`` connection pool."""
@@ -188,6 +218,7 @@ class AsyncTransport(BaseAsyncTransport):
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
+        self._retry_policy: RetryPolicy = RetryPolicy(max_retries=max_retries)
 
     async def request(
         self,
@@ -200,25 +231,47 @@ class AsyncTransport(BaseAsyncTransport):
         stream: bool = False,
     ) -> Any:
         """Async analogue of :meth:`SyncTransport.request`."""
-        request = self._client.build_request(
-            method, path, params=params, json=json, headers=headers
-        )
-        try:
-            response = await self._client.send(request, stream=stream)
-        except httpx.TimeoutException as exc:
-            raise APITimeoutError(f"Request timed out: {exc}") from exc
-        except httpx.HTTPError as exc:
-            raise APIConnectionError(f"Connection failed: {exc}") from exc
+        retry_index = 0
+        while True:
+            try:
+                response = await self._client.send(
+                    self._client.build_request(
+                        method, path, params=params, json=json, headers=headers
+                    ),
+                    stream=stream,
+                )
+            except httpx.HTTPError as exc:
+                if self._retry_policy.should_retry_exception(
+                    retry_index=retry_index, method=method, exc=exc
+                ):
+                    await asyncio.sleep(self._retry_policy.compute_delay(retry_index=retry_index))
+                    retry_index += 1
+                    continue
+                raise _wrap_transport_exception(exc) from exc
 
-        if response.is_error:
+            if response.is_error:
+                if stream:
+                    await response.aread()
+                    await response.aclose()
+                api_error = _build_api_error(response)
+                if self._retry_policy.should_retry_status(
+                    retry_index=retry_index, method=method, status_code=response.status_code
+                ):
+                    retry_after = (
+                        api_error.retry_after if isinstance(api_error, RateLimitError) else None
+                    )
+                    await asyncio.sleep(
+                        self._retry_policy.compute_delay(
+                            retry_index=retry_index, retry_after=retry_after
+                        )
+                    )
+                    retry_index += 1
+                    continue
+                raise api_error
+
             if stream:
-                await response.aread()
-                await response.aclose()
-            _raise_for_error(response)
-
-        if stream:
-            return response
-        return _decode_body(response)
+                return response
+            return _decode_body(response)
 
     async def aclose(self) -> None:
         """Shut the underlying ``httpx.AsyncClient`` connection pool."""

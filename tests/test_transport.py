@@ -29,7 +29,6 @@ from claude_compliance_sdk._internal.transport import (
 )
 from claude_compliance_sdk.version import __version__ as _SDK_VERSION
 
-
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
 PATH = "/v1/compliance/activities"
@@ -37,12 +36,14 @@ PATH = "/v1/compliance/activities"
 
 @pytest.fixture
 def sync_transport() -> SyncTransport:
+    # Retries are isolated in tests/test_retry.py; the transport tests
+    # use max_retries=0 so a single mocked response is enough.
     transport = SyncTransport(
         api_key=API_KEY,
         base_url=BASE_URL,
         timeout=30.0,
         anthropic_version="2023-06-01",
-        max_retries=3,
+        max_retries=0,
         rate_limit_rpm=600,
     )
     yield transport
@@ -56,7 +57,7 @@ async def async_transport() -> AsyncTransport:
         base_url=BASE_URL,
         timeout=30.0,
         anthropic_version="2023-06-01",
-        max_retries=3,
+        max_retries=0,
         rate_limit_rpm=600,
     )
     yield transport
@@ -98,9 +99,7 @@ async def test_async_get_returns_decoded_json(
     assert result == payload
 
 
-def test_sync_empty_body_returns_none(
-    sync_transport: SyncTransport, httpx_mock: HTTPXMock
-) -> None:
+def test_sync_empty_body_returns_none(sync_transport: SyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}{PATH}", status_code=204, content=b"")
     assert sync_transport.request("DELETE", PATH) is None
 
@@ -124,9 +123,7 @@ def test_sync_non_json_body_returned_as_text(
 # ---------------------------------------------------------------------------
 
 
-def test_sync_injects_default_headers(
-    sync_transport: SyncTransport, httpx_mock: HTTPXMock
-) -> None:
+def test_sync_injects_default_headers(sync_transport: SyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={})
     sync_transport.request("GET", PATH)
     request = httpx_mock.get_request()
@@ -222,9 +219,7 @@ def test_sync_error_status_raises_typed_exception(
     assert exc_info.value.error_message == message
 
 
-async def test_async_error_mapping(
-    async_transport: AsyncTransport, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_error_mapping(async_transport: AsyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         status_code=401,
@@ -234,9 +229,7 @@ async def test_async_error_mapping(
         await async_transport.request("GET", PATH)
 
 
-def test_429_carries_retry_after(
-    sync_transport: SyncTransport, httpx_mock: HTTPXMock
-) -> None:
+def test_429_carries_retry_after(sync_transport: SyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         status_code=429,
@@ -248,9 +241,7 @@ def test_429_carries_retry_after(
     assert exc_info.value.retry_after == 7.0
 
 
-def test_error_with_non_json_body(
-    sync_transport: SyncTransport, httpx_mock: HTTPXMock
-) -> None:
+def test_error_with_non_json_body(sync_transport: SyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         status_code=502,
