@@ -99,6 +99,15 @@ helpers — only the I/O layer differs.
   Transport code maps non-2xx responses via
   `APIError.from_response(status_code=..., headers=..., body=...)` so
   the status-code routing and 401 split stay in one place.
+- **HTTP I/O:** resources never touch `httpx` directly. They call
+  `self._transport.request(method, path, params=..., json=...,
+  headers=..., stream=...)` and let the transport handle headers,
+  rate limit, retry, and error mapping. New transport-layer concerns
+  go in `_internal/`, not in resource modules.
+- **Pagination:** every paginated `.list()` returns a `CursorPage[T]`
+  or `OffsetPage[T]`. The sibling `.iter()` method delegates to
+  `iter_all_cursor_*` / `iter_all_offset_*` from
+  `_internal/pagination.py` — do not reimplement the loop per resource.
 
 ## Testing conventions
 

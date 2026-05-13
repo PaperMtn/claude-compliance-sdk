@@ -132,10 +132,12 @@ tree.
 ### Rate limiting
 
 The server enforces **600 requests per minute per API key**. The SDK
-applies a client-side token bucket at the same rate by default
-(`rate_limit_rpm=600`) to smooth bursty callers, but the bucket is not
-a substitute for handling 429s — those are retried with `Retry-After`
-honoured.
+applies a client-side sliding-window limiter at the same rate by
+default (`rate_limit_rpm=600`) to smooth bursty callers, but the
+limiter is not a substitute for handling 429s — those are retried by
+the transport with `Retry-After` honoured over the backoff schedule.
+Set `rate_limit_rpm=0` to disable the limiter and rely purely on
+server enforcement.
 
 ---
 
@@ -143,17 +145,18 @@ honoured.
 
 ```
 claude_compliance_sdk/
-├── __init__.py                 # re-exports ComplianceClient, AsyncComplianceClient, errors
+├── __init__.py                 # re-exports clients, errors, page classes
 ├── client.py                   # ComplianceClient (sync entry point)
 ├── async_client.py             # AsyncComplianceClient (async entry point)
 ├── exceptions.py               # error hierarchy + APIError.from_response
 ├── version.py
 ├── py.typed
 ├── _internal/                  # not part of the public surface
-│   ├── transport.py            # httpx-backed sync + async transport (Phase 2)
-│   ├── retry.py                # retry policy w/ Retry-After (Phase 2)
-│   ├── rate_limit.py           # token-bucket rate limiter (Phase 2)
-│   ├── pagination.py           # CursorPage, OffsetPage, iter helpers (Phase 2)
+│   ├── base_transport.py       # abstract sync + async transport bases
+│   ├── transport.py            # httpx-backed SyncTransport / AsyncTransport
+│   ├── retry.py                # RetryPolicy w/ Retry-After
+│   ├── rate_limit.py           # sliding-window rate limiter
+│   ├── pagination.py           # CursorPage, OffsetPage, iter_all helpers
 │   └── downloads.py            # eager / streamed download helpers (Phase 3.5)
 └── resources/                  # one module per resource group
     ├── activities.py
