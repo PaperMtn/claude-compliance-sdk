@@ -241,7 +241,6 @@ cython_debug/
 .agents/
 skills-lock.json
 PLAN.md
-CLAUDE.md
 
 ### mp
 .integrations_cache/
