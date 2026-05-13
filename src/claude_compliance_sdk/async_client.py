@@ -1,6 +1,6 @@
 """Asynchronous entry point for the Anthropic Compliance SDK.
 
-Mirrors :mod:`anthropic_compliance_sdk.client` exactly, but every method
+Mirrors :mod:`claude_compliance_sdk.client` exactly, but every method
 that performs I/O is a coroutine. The construction surface, defaults,
 and resource group attributes are otherwise identical so callers can
 swap one client for the other without changing call sites.
@@ -9,8 +9,8 @@ swap one client for the other without changing call sites.
 import os
 from types import TracebackType
 
-from anthropic_compliance_sdk._internal.base_transport import BaseAsyncTransport
-from anthropic_compliance_sdk.client import (
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport
+from claude_compliance_sdk.client import (
     API_KEY_ENV_VAR,
     DEFAULT_ANTHROPIC_VERSION,
     DEFAULT_BASE_URL,
@@ -19,16 +19,16 @@ from anthropic_compliance_sdk.client import (
     DEFAULT_RATE_LIMIT_RPM,
     DEFAULT_TIMEOUT_SECONDS,
 )
-from anthropic_compliance_sdk.resources.activities import AsyncActivities
-from anthropic_compliance_sdk.resources.artifacts import AsyncArtifacts
-from anthropic_compliance_sdk.resources.chats import AsyncChats
-from anthropic_compliance_sdk.resources.files import AsyncFiles
-from anthropic_compliance_sdk.resources.generated_files import AsyncGeneratedFiles
-from anthropic_compliance_sdk.resources.groups import AsyncGroups
-from anthropic_compliance_sdk.resources.organizations import AsyncOrganizations
-from anthropic_compliance_sdk.resources.project_documents import AsyncProjectDocuments
-from anthropic_compliance_sdk.resources.projects import AsyncProjects
-from anthropic_compliance_sdk.resources.roles import AsyncRoles
+from claude_compliance_sdk.resources.activities import AsyncActivities
+from claude_compliance_sdk.resources.artifacts import AsyncArtifacts
+from claude_compliance_sdk.resources.chats import AsyncChats
+from claude_compliance_sdk.resources.files import AsyncFiles
+from claude_compliance_sdk.resources.generated_files import AsyncGeneratedFiles
+from claude_compliance_sdk.resources.groups import AsyncGroups
+from claude_compliance_sdk.resources.organizations import AsyncOrganizations
+from claude_compliance_sdk.resources.project_documents import AsyncProjectDocuments
+from claude_compliance_sdk.resources.projects import AsyncProjects
+from claude_compliance_sdk.resources.roles import AsyncRoles
 
 
 class AsyncComplianceClient:
@@ -64,7 +64,7 @@ class AsyncComplianceClient:
 
     Example:
         >>> import asyncio
-        >>> from anthropic_compliance_sdk import AsyncComplianceClient
+        >>> from claude_compliance_sdk import AsyncComplianceClient
         >>> async def main() -> None:
         ...     async with AsyncComplianceClient(api_key="sk-ant-api01-...") as client:
         ...         pass  # resource methods land in Phase 3

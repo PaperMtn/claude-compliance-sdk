@@ -14,9 +14,9 @@ land in Phase 2 (core infrastructure) and Phase 3 (per-resource
 implementations).
 """
 
-from anthropic_compliance_sdk.async_client import AsyncComplianceClient
-from anthropic_compliance_sdk.client import ComplianceClient
-from anthropic_compliance_sdk.version import __version__
+from claude_compliance_sdk.async_client import AsyncComplianceClient
+from claude_compliance_sdk.client import ComplianceClient
+from claude_compliance_sdk.version import __version__
 
 __all__ = [
     "AsyncComplianceClient",

@@ -5,7 +5,7 @@ for downloading versioned text artifacts (code, markdown, etc.) that
 Claude generates or updates in chat responses. Methods land in Phase 3.
 """
 
-from anthropic_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 
 
 class Artifacts:

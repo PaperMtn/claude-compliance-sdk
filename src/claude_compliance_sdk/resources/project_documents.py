@@ -7,7 +7,7 @@ see ``files`` and ``projects.list_attachments`` for the union shape.
 Methods land in Phase 3.
 """
 
-from anthropic_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 
 
 class ProjectDocuments:

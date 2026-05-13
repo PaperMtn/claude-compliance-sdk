@@ -9,17 +9,17 @@ and ten resource group attributes.
 import os
 from types import TracebackType
 
-from anthropic_compliance_sdk._internal.base_transport import BaseTransport
-from anthropic_compliance_sdk.resources.activities import Activities
-from anthropic_compliance_sdk.resources.artifacts import Artifacts
-from anthropic_compliance_sdk.resources.chats import Chats
-from anthropic_compliance_sdk.resources.files import Files
-from anthropic_compliance_sdk.resources.generated_files import GeneratedFiles
-from anthropic_compliance_sdk.resources.groups import Groups
-from anthropic_compliance_sdk.resources.organizations import Organizations
-from anthropic_compliance_sdk.resources.project_documents import ProjectDocuments
-from anthropic_compliance_sdk.resources.projects import Projects
-from anthropic_compliance_sdk.resources.roles import Roles
+from claude_compliance_sdk._internal.base_transport import BaseTransport
+from claude_compliance_sdk.resources.activities import Activities
+from claude_compliance_sdk.resources.artifacts import Artifacts
+from claude_compliance_sdk.resources.chats import Chats
+from claude_compliance_sdk.resources.files import Files
+from claude_compliance_sdk.resources.generated_files import GeneratedFiles
+from claude_compliance_sdk.resources.groups import Groups
+from claude_compliance_sdk.resources.organizations import Organizations
+from claude_compliance_sdk.resources.project_documents import ProjectDocuments
+from claude_compliance_sdk.resources.projects import Projects
+from claude_compliance_sdk.resources.roles import Roles
 
 DEFAULT_BASE_URL = "https://api.anthropic.com"
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -64,7 +64,7 @@ class ComplianceClient:
             ``ComplianceClientError``.)
 
     Example:
-        >>> from anthropic_compliance_sdk import ComplianceClient
+        >>> from claude_compliance_sdk import ComplianceClient
         >>> with ComplianceClient(api_key="sk-ant-api01-...") as client:
         ...     pass  # resource methods land in Phase 3
     """

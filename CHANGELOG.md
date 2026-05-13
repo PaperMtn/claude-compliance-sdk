@@ -13,4 +13,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   config (Black, isort, Pylint, mypy, pre-commit), src/tests layout, and
   documentation skeleton.
 
-[Unreleased]: https://github.com/PaperMtn/anthropic-compliance-sdk/compare/HEAD...HEAD
+[Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/HEAD...HEAD

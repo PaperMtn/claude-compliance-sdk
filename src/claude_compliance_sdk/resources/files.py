@@ -5,7 +5,7 @@ for metadata, download, and deletion of user-uploaded files. Methods
 land in Phase 3.
 """
 
-from anthropic_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 
 
 class Files:

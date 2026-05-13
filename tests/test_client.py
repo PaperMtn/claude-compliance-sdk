@@ -9,8 +9,8 @@ arrive in Phase 3.
 
 import pytest
 
-from anthropic_compliance_sdk import AsyncComplianceClient, ComplianceClient, __version__
-from anthropic_compliance_sdk.client import API_KEY_ENV_VAR
+from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, __version__
+from claude_compliance_sdk.client import API_KEY_ENV_VAR
 
 RESOURCE_GROUPS = (
     "activities",

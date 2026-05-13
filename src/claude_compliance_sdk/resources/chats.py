@@ -4,7 +4,7 @@ Wraps ``GET /v1/compliance/apps/chats``, the per-chat messages endpoint,
 and chat deletion. Read and delete methods land in Phase 3.
 """
 
-from anthropic_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 
 
 class Chats:

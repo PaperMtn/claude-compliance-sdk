@@ -6,7 +6,7 @@ if chats are still attached; the SDK surfaces that as a
 ``ComplianceConflictError``. Methods land in Phase 3.
 """
 
-from anthropic_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 
 
 class Projects:
