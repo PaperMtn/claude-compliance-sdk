@@ -7,18 +7,18 @@ see ``files`` and ``projects.list_attachments`` for the union shape.
 Methods land in Phase 3.
 """
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
 
 class ProjectDocuments:
     """Synchronous client for compliance project documents."""
 
-    def __init__(self, transport: BaseTransport) -> None:
+    def __init__(self, transport: SyncTransport) -> None:
         self._transport = transport
 
 
 class AsyncProjectDocuments:
     """Asynchronous client for compliance project documents."""
 
-    def __init__(self, transport: BaseAsyncTransport) -> None:
+    def __init__(self, transport: AsyncTransport) -> None:
         self._transport = transport

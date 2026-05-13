@@ -6,18 +6,18 @@ files have no delete endpoint and live in the per-conversation
 Filestore. Methods land in Phase 3.
 """
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
 
 class GeneratedFiles:
     """Synchronous client for assistant-produced compliance files."""
 
-    def __init__(self, transport: BaseTransport) -> None:
+    def __init__(self, transport: SyncTransport) -> None:
         self._transport = transport
 
 
 class AsyncGeneratedFiles:
     """Asynchronous client for assistant-produced compliance files."""
 
-    def __init__(self, transport: BaseAsyncTransport) -> None:
+    def __init__(self, transport: AsyncTransport) -> None:
         self._transport = transport

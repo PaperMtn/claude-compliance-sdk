@@ -30,7 +30,6 @@ from claude_compliance_sdk.resources.activities import (
     _build_query_params,
 )
 
-
 API_KEY = "sk-ant-admin01-test-key"
 BASE_URL = "https://api.test.invalid"
 
@@ -266,9 +265,7 @@ def test_list_sends_filters_as_query_params(
     assert request.url.params["limit"] == "50"
 
 
-def test_iter_walks_multiple_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_walks_multiple_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{ACTIVITIES_PATH}",
         json={
@@ -315,15 +312,11 @@ def test_iter_carries_filters_to_each_page(
             "last_id": "b",
         },
     )
-    out = list(
-        sync_client.activities.iter(activity_types=["api_key_created"], limit=10)
-    )
+    out = list(sync_client.activities.iter(activity_types=["api_key_created"], limit=10))
     assert [a.id for a in out] == ["a", "b"]
 
 
-def test_iter_empty_page(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_empty_page(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{ACTIVITIES_PATH}",
         json={"data": [], "has_more": False, "first_id": None, "last_id": None},

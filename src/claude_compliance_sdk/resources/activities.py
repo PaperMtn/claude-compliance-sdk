@@ -22,12 +22,12 @@ from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 from claude_compliance_sdk._internal.pagination import (
     CursorPage,
     iter_all_cursor_async,
     iter_all_cursor_sync,
 )
+from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
 # Module-level alias for the `list` builtin. The Activities classes
 # below define a `.list()` method which shadows the builtin in their
@@ -148,7 +148,7 @@ def _build_query_params(
 class Activities:
     """Synchronous client for the Compliance API activity feed."""
 
-    def __init__(self, transport: BaseTransport) -> None:
+    def __init__(self, transport: SyncTransport) -> None:
         self._transport = transport
 
     def list(
@@ -243,7 +243,7 @@ class Activities:
 class AsyncActivities:
     """Asynchronous client for the Compliance API activity feed."""
 
-    def __init__(self, transport: BaseAsyncTransport) -> None:
+    def __init__(self, transport: AsyncTransport) -> None:
         self._transport = transport
 
     async def list(

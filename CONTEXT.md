@@ -152,7 +152,6 @@ claude_compliance_sdk/
 ├── version.py
 ├── py.typed
 ├── _internal/                  # not part of the public surface
-│   ├── base_transport.py       # abstract sync + async transport bases
 │   ├── transport.py            # httpx-backed SyncTransport / AsyncTransport
 │   ├── retry.py                # RetryPolicy w/ Retry-After
 │   ├── rate_limit.py           # sliding-window rate limiter
