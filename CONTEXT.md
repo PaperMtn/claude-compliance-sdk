@@ -146,7 +146,7 @@ claude_compliance_sdk/
 ├── __init__.py                 # re-exports ComplianceClient, AsyncComplianceClient, errors
 ├── client.py                   # ComplianceClient (sync entry point)
 ├── async_client.py             # AsyncComplianceClient (async entry point)
-├── exceptions.py               # error hierarchy (Phase 2)
+├── exceptions.py               # error hierarchy + APIError.from_response
 ├── version.py
 ├── py.typed
 ├── _internal/                  # not part of the public surface

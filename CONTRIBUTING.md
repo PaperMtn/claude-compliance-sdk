@@ -107,6 +107,9 @@ Other conventions:
   — well-named identifiers already do that.
 - Avoid abstractions that exist for a single caller. Three similar lines
   are better than a premature helper.
+- Raise from `claude_compliance_sdk.exceptions`. Never raise bare
+  `Exception` or `ValueError` for HTTP failures. `ValueError` is fine
+  for input-shape violations (e.g. `user_ids` length checks).
 
 ## Testing
 
