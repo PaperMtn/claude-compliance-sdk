@@ -4,6 +4,7 @@ Public surface:
 
 * :class:`ComplianceClient` — synchronous client.
 * :class:`AsyncComplianceClient` — asynchronous client.
+* The error hierarchy rooted at :class:`ComplianceClientError`.
 * :data:`__version__` — current SDK version.
 
 The two clients expose the same resource group attributes
@@ -16,10 +17,40 @@ implementations).
 
 from claude_compliance_sdk.async_client import AsyncComplianceClient
 from claude_compliance_sdk.client import ComplianceClient
+from claude_compliance_sdk.exceptions import (
+    APIConnectionError,
+    APIError,
+    APIStatusError,
+    APITimeoutError,
+    AuthenticationError,
+    BadRequestError,
+    ComplianceClientError,
+    ConflictError,
+    InsufficientScopeError,
+    InternalServerError,
+    InvalidAPIKeyError,
+    NotFoundError,
+    PermissionDeniedError,
+    RateLimitError,
+)
 from claude_compliance_sdk.version import __version__
 
 __all__ = [
+    "APIConnectionError",
+    "APIError",
+    "APIStatusError",
+    "APITimeoutError",
     "AsyncComplianceClient",
+    "AuthenticationError",
+    "BadRequestError",
     "ComplianceClient",
+    "ComplianceClientError",
+    "ConflictError",
+    "InsufficientScopeError",
+    "InternalServerError",
+    "InvalidAPIKeyError",
+    "NotFoundError",
+    "PermissionDeniedError",
+    "RateLimitError",
     "__version__",
 ]

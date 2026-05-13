@@ -73,9 +73,8 @@ helpers — only the I/O layer differs.
   - `feat(transport): …`, `fix(pagination): …`, `chore: …`,
     `refactor(client): …`, `docs(readme): …`.
 - Subject under 72 chars. Body is for the *why*.
-- Sign-off line on every Claude-authored commit:
-  `Co-Authored-By: Claude <noreply@anthropic.com>` (the harness adds
-  the correct model variant).
+- No `Co-Authored-By: Claude` trailer on commits. Maintainer
+  preference — author the commit normally as the human contributor.
 
 ## Coding conventions
 
@@ -97,6 +96,9 @@ helpers — only the I/O layer differs.
 - **Errors:** raise from `claude_compliance_sdk.exceptions`. Never raise
   bare `Exception` or `ValueError` for HTTP failures. `ValueError` is
   acceptable for input-shape violations (e.g. `user_ids` length).
+  Transport code maps non-2xx responses via
+  `APIError.from_response(status_code=..., headers=..., body=...)` so
+  the status-code routing and 401 split stay in one place.
 
 ## Testing conventions
 
