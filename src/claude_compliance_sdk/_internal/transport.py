@@ -17,7 +17,6 @@ from typing import Any, Mapping
 
 import httpx
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 from claude_compliance_sdk._internal.rate_limit import (
     AsyncSlidingWindowLimiter,
     SlidingWindowLimiter,
@@ -71,7 +70,7 @@ def _wrap_transport_exception(exc: httpx.HTTPError) -> APIConnectionError:
     return APIConnectionError(f"Connection failed: {exc}")
 
 
-class SyncTransport(BaseTransport):
+class SyncTransport:
     """Synchronous HTTP transport backed by :class:`httpx.Client`.
 
     Constructed once per :class:`~claude_compliance_sdk.ComplianceClient`
@@ -198,7 +197,7 @@ class SyncTransport(BaseTransport):
         self._client.close()
 
 
-class AsyncTransport(BaseAsyncTransport):
+class AsyncTransport:
     """Asynchronous HTTP transport backed by :class:`httpx.AsyncClient`.
 
     See :class:`SyncTransport` for the constructor contract and request

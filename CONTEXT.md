@@ -152,11 +152,11 @@ claude_compliance_sdk/
 ├── version.py
 ├── py.typed
 ├── _internal/                  # not part of the public surface
-│   ├── base_transport.py       # abstract sync + async transport bases
 │   ├── transport.py            # httpx-backed SyncTransport / AsyncTransport
 │   ├── retry.py                # RetryPolicy w/ Retry-After
 │   ├── rate_limit.py           # sliding-window rate limiter
 │   ├── pagination.py           # CursorPage, OffsetPage, iter_all helpers
+│   ├── parsing.py              # parse_with_extra for response dataclasses
 │   └── downloads.py            # eager / streamed download helpers (Phase 3.5)
 └── resources/                  # one module per resource group
     ├── activities.py

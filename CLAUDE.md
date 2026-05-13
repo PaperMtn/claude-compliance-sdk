@@ -108,6 +108,20 @@ helpers — only the I/O layer differs.
   or `OffsetPage[T]`. The sibling `.iter()` method delegates to
   `iter_all_cursor_*` / `iter_all_offset_*` from
   `_internal/pagination.py` — do not reimplement the loop per resource.
+- **The `list` shadowing trick:** a resource method named `.list()`
+  shadows the `list` builtin in the class namespace, which breaks
+  `list[str]` annotations on sibling methods (`.iter()` and friends).
+  Define a module-level alias near the top of each paginated resource
+  file (`StrList = list[str]`, etc.) and use it for those parameter
+  types. The first occurrence (and the rationale) lives in
+  `resources/activities.py`.
+- **Response dataclasses:** every resource response type (`Activity`,
+  `Chat`, `Project`, …) defines its known top-level fields and an
+  `extra: dict[str, Any] = field(default_factory=dict)`. The
+  `from_dict` classmethod is a one-liner that delegates to
+  `parse_with_extra(cls, body)` from `_internal/parsing.py` — do not
+  maintain a parallel `_KNOWN_FIELDS` frozenset; the helper derives
+  the known set from `dataclasses.fields(cls)`.
 
 ## Testing conventions
 

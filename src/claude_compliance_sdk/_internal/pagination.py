@@ -27,7 +27,7 @@ from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, Mapping, TypeVar
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
 T = TypeVar("T")
 
@@ -103,7 +103,7 @@ AsyncOffsetPage = OffsetPage
 
 
 def iter_all_cursor_sync(
-    transport: BaseTransport,
+    transport: SyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
@@ -132,7 +132,7 @@ def iter_all_cursor_sync(
 
 
 async def iter_all_cursor_async(
-    transport: BaseAsyncTransport,
+    transport: AsyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
@@ -151,7 +151,7 @@ async def iter_all_cursor_async(
 
 
 def iter_all_offset_sync(
-    transport: BaseTransport,
+    transport: SyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
@@ -179,7 +179,7 @@ def iter_all_offset_sync(
 
 
 async def iter_all_offset_async(
-    transport: BaseAsyncTransport,
+    transport: AsyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
