@@ -3,12 +3,9 @@
 Two concrete classes — :class:`SyncTransport` and :class:`AsyncTransport`
 — wrap :class:`httpx.Client` and :class:`httpx.AsyncClient` respectively.
 Each exposes a single ``request()`` entry point used by every resource
-group, with header injection, retry handling, error mapping, and
-``request_id`` lift handled in one place so resources stay thin.
-
-Rate-limit hook lands in Phase 2.4. ``rate_limit_rpm`` is accepted in
-``__init__`` so the public client config flows through unchanged when
-the limiter wires in.
+group, with rate limiting, header injection, retry handling, error
+mapping, and ``request_id`` lift handled in one place so resources
+stay thin.
 """
 
 from __future__ import annotations
@@ -21,6 +18,10 @@ from typing import Any, Mapping
 import httpx
 
 from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.rate_limit import (
+    AsyncSlidingWindowLimiter,
+    SlidingWindowLimiter,
+)
 from claude_compliance_sdk._internal.retry import RetryPolicy
 from claude_compliance_sdk.exceptions import (
     APIConnectionError,
@@ -87,8 +88,9 @@ class SyncTransport(BaseTransport):
         max_retries: Maximum retries after the initial attempt. ``0``
             disables retries. Passed straight into the
             :class:`RetryPolicy`.
-        rate_limit_rpm: Accepted now; consumed by the rate-limit layer
-            in Phase 2.4. Stored as :attr:`rate_limit_rpm`.
+        rate_limit_rpm: Maximum requests per rolling 60-second window.
+            ``0`` (or negative) disables the limiter. Smooths bursty
+            callers; the server remains the source of truth.
     """
 
     def __init__(
@@ -109,6 +111,7 @@ class SyncTransport(BaseTransport):
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
         self._retry_policy: RetryPolicy = RetryPolicy(max_retries=max_retries)
+        self._rate_limiter: SlidingWindowLimiter = SlidingWindowLimiter(rpm=rate_limit_rpm)
 
     def request(
         self,
@@ -149,6 +152,7 @@ class SyncTransport(BaseTransport):
         """
         retry_index = 0
         while True:
+            self._rate_limiter.acquire()
             try:
                 response = self._client.send(
                     self._client.build_request(
@@ -219,6 +223,9 @@ class AsyncTransport(BaseAsyncTransport):
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
         self._retry_policy: RetryPolicy = RetryPolicy(max_retries=max_retries)
+        self._rate_limiter: AsyncSlidingWindowLimiter = AsyncSlidingWindowLimiter(
+            rpm=rate_limit_rpm
+        )
 
     async def request(
         self,
@@ -233,6 +240,7 @@ class AsyncTransport(BaseAsyncTransport):
         """Async analogue of :meth:`SyncTransport.request`."""
         retry_index = 0
         while True:
+            await self._rate_limiter.acquire()
             try:
                 response = await self._client.send(
                     self._client.build_request(
