@@ -60,8 +60,7 @@ class ComplianceClient:
 
     Raises:
         ValueError: If no API key is supplied through ``api_key`` or
-            the environment variable. (Phase 2 replaces this with
-            ``ComplianceClientError``.)
+            the environment variable.
 
     Example:
         >>> from claude_compliance_sdk import ComplianceClient
