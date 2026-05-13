@@ -58,9 +58,7 @@ class RetryPolicy:
     jitter_ratio: float = DEFAULT_JITTER_RATIO
     _rng: random.Random = field(default_factory=random.Random, repr=False)
 
-    def should_retry_status(
-        self, *, retry_index: int, method: str, status_code: int
-    ) -> bool:
+    def should_retry_status(self, *, retry_index: int, method: str, status_code: int) -> bool:
         """Return ``True`` if a non-2xx response should be retried.
 
         Args:
@@ -79,9 +77,7 @@ class RetryPolicy:
             return False
         return status_code in RETRYABLE_STATUSES
 
-    def should_retry_exception(
-        self, *, retry_index: int, method: str, exc: BaseException
-    ) -> bool:
+    def should_retry_exception(self, *, retry_index: int, method: str, exc: BaseException) -> bool:
         """Return ``True`` if a transport exception should be retried.
 
         Connect errors are retried for any method because the request

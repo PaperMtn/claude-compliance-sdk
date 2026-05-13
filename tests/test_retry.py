@@ -22,7 +22,6 @@ from claude_compliance_sdk._internal.retry import (
 )
 from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
-
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
 PATH = "/v1/compliance/activities"
@@ -198,9 +197,7 @@ def fake_async_sleep(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     return calls
 
 
-def test_sync_retries_500_then_succeeds(
-    httpx_mock: HTTPXMock, fake_sleep: list[float]
-) -> None:
+def test_sync_retries_500_then_succeeds(httpx_mock: HTTPXMock, fake_sleep: list[float]) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         status_code=500,
@@ -218,9 +215,7 @@ def test_sync_retries_500_then_succeeds(
     assert len(fake_sleep) == 1
 
 
-def test_sync_exhausts_retries_then_raises(
-    httpx_mock: HTTPXMock, fake_sleep: list[float]
-) -> None:
+def test_sync_exhausts_retries_then_raises(httpx_mock: HTTPXMock, fake_sleep: list[float]) -> None:
     for _ in range(4):
         httpx_mock.add_response(
             url=f"{BASE_URL}{PATH}",
@@ -278,9 +273,7 @@ def test_sync_does_not_retry_non_retryable_status(
     assert fake_sleep == []
 
 
-def test_sync_does_not_retry_post_on_500(
-    httpx_mock: HTTPXMock, fake_sleep: list[float]
-) -> None:
+def test_sync_does_not_retry_post_on_500(httpx_mock: HTTPXMock, fake_sleep: list[float]) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         status_code=500,
