@@ -115,6 +115,13 @@ helpers — only the I/O layer differs.
   file (`StrList = list[str]`, etc.) and use it for those parameter
   types. The first occurrence (and the rationale) lives in
   `resources/activities.py`.
+- **Response dataclasses:** every resource response type (`Activity`,
+  `Chat`, `Project`, …) defines its known top-level fields and an
+  `extra: dict[str, Any] = field(default_factory=dict)`. The
+  `from_dict` classmethod is a one-liner that delegates to
+  `parse_with_extra(cls, body)` from `_internal/parsing.py` — do not
+  maintain a parallel `_KNOWN_FIELDS` frozenset; the helper derives
+  the known set from `dataclasses.fields(cls)`.
 
 ## Testing conventions
 

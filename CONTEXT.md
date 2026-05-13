@@ -156,6 +156,7 @@ claude_compliance_sdk/
 │   ├── retry.py                # RetryPolicy w/ Retry-After
 │   ├── rate_limit.py           # sliding-window rate limiter
 │   ├── pagination.py           # CursorPage, OffsetPage, iter_all helpers
+│   ├── parsing.py              # parse_with_extra for response dataclasses
 │   └── downloads.py            # eager / streamed download helpers (Phase 3.5)
 └── resources/                  # one module per resource group
     ├── activities.py

@@ -27,6 +27,7 @@ from claude_compliance_sdk._internal.pagination import (
     iter_all_cursor_async,
     iter_all_cursor_sync,
 )
+from claude_compliance_sdk._internal.parsing import parse_with_extra
 from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
 # Module-level alias for the `list` builtin. The Activities classes
@@ -38,17 +39,6 @@ from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransp
 StrList = list[str]
 
 ACTIVITIES_PATH = "/v1/compliance/activities"
-
-_KNOWN_ACTIVITY_FIELDS = frozenset(
-    {
-        "id",
-        "created_at",
-        "type",
-        "organization_id",
-        "organization_uuid",
-        "actor",
-    }
-)
 
 
 @dataclass
@@ -91,15 +81,7 @@ class Activity:
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Activity":
         """Build an :class:`Activity` from one decoded JSON record."""
-        return cls(
-            id=body["id"],
-            created_at=body["created_at"],
-            type=body["type"],
-            organization_id=body.get("organization_id"),
-            organization_uuid=body.get("organization_uuid"),
-            actor=body.get("actor"),
-            extra={k: v for k, v in body.items() if k not in _KNOWN_ACTIVITY_FIELDS},
-        )
+        return parse_with_extra(cls, body)
 
 
 def _build_query_params(
