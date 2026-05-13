@@ -21,5 +21,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `APITimeoutError`. `APIError.from_response(...)` builds the right
   subclass from a status code, response headers, and decoded body. All
   classes are re-exported from `claude_compliance_sdk`.
+- HTTP transport (`SyncTransport`, `AsyncTransport` in
+  `claude_compliance_sdk._internal.transport`) backed by `httpx`. Single
+  `request()` entry point per transport handles header injection
+  (`x-api-key`, `anthropic-version`, SDK `User-Agent`), error mapping
+  via `APIError.from_response`, `request_id` propagation, and
+  streaming responses for the upcoming download helpers.
+  `ComplianceClient` and `AsyncComplianceClient` now construct the real
+  transports and their `close()` / `aclose()` delegate accordingly.
+- Retry policy (`claude_compliance_sdk._internal.retry.RetryPolicy`)
+  with exponential backoff (0.5s base, 20s cap, ±25% jitter), bounded
+  by `max_retries`. Retries 429 / 500 / 502 / 503 / 504 for safe
+  methods, `httpx.ConnectError` for any method, `httpx.ReadTimeout`
+  only for safe methods. Honours `Retry-After` on 429 over the
+  backoff schedule.
+- Client-side rate limiter
+  (`claude_compliance_sdk._internal.rate_limit.SlidingWindowLimiter`
+  / `AsyncSlidingWindowLimiter`) with a 60-second sliding window
+  sized by `rate_limit_rpm`. Defaults to 600 RPM to match server-side
+  enforcement; `rate_limit_rpm=0` disables it.
+- Pagination primitives in
+  `claude_compliance_sdk._internal.pagination`: generic dataclasses
+  `CursorPage[T]` and `OffsetPage[T]` plus four iteration helpers
+  (`iter_all_cursor_sync`, `iter_all_cursor_async`,
+  `iter_all_offset_sync`, `iter_all_offset_async`) that resources'
+  `.iter()` methods will plug into in Phase 3. `CursorPage`,
+  `OffsetPage`, `AsyncCursorPage`, and `AsyncOffsetPage` are
+  re-exported from `claude_compliance_sdk`.
 
 [Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/HEAD...HEAD

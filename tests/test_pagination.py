@@ -20,7 +20,6 @@ from claude_compliance_sdk._internal.pagination import (
 )
 from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
-
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
 PATH = "/v1/compliance/activities"
@@ -126,9 +125,7 @@ def test_async_page_aliases_match_sync_classes() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_cursor_sync_single_page(
-    sync_transport: SyncTransport, httpx_mock: HTTPXMock
-) -> None:
+def test_cursor_sync_single_page(sync_transport: SyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         json={
@@ -224,11 +221,7 @@ def test_cursor_sync_does_not_mutate_caller_params(
         json={"data": [{"id": "b"}], "first_id": "b", "last_id": "b", "has_more": False},
     )
     caller_params: dict[str, Any] = {"limit": 2}
-    list(
-        iter_all_cursor_sync(
-            sync_transport, PATH, FakeActivity.from_dict, params=caller_params
-        )
-    )
+    list(iter_all_cursor_sync(sync_transport, PATH, FakeActivity.from_dict, params=caller_params))
     assert caller_params == {"limit": 2}
 
 
@@ -237,9 +230,7 @@ def test_cursor_sync_does_not_mutate_caller_params(
 # ---------------------------------------------------------------------------
 
 
-def test_offset_sync_single_page(
-    sync_transport: SyncTransport, httpx_mock: HTTPXMock
-) -> None:
+def test_offset_sync_single_page(sync_transport: SyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         json={"data": [{"id": "a"}, {"id": "b"}], "next_page": None},
@@ -294,9 +285,7 @@ async def test_cursor_async_multi_page(
         json={"data": [{"id": "b"}], "first_id": "b", "last_id": "b", "has_more": False},
     )
     items = [
-        item async for item in iter_all_cursor_async(
-            async_transport, PATH, FakeActivity.from_dict
-        )
+        item async for item in iter_all_cursor_async(async_transport, PATH, FakeActivity.from_dict)
     ]
     assert [item.id for item in items] == ["a", "b"]
 
@@ -313,23 +302,17 @@ async def test_offset_async_multi_page(
         json={"data": [{"id": "b"}], "next_page": None},
     )
     items = [
-        item async for item in iter_all_offset_async(
-            async_transport, PATH, FakeActivity.from_dict
-        )
+        item async for item in iter_all_offset_async(async_transport, PATH, FakeActivity.from_dict)
     ]
     assert [item.id for item in items] == ["a", "b"]
 
 
-async def test_cursor_async_empty(
-    async_transport: AsyncTransport, httpx_mock: HTTPXMock
-) -> None:
+async def test_cursor_async_empty(async_transport: AsyncTransport, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         json={"data": [], "first_id": None, "last_id": None, "has_more": False},
     )
     items = [
-        item async for item in iter_all_cursor_async(
-            async_transport, PATH, FakeActivity.from_dict
-        )
+        item async for item in iter_all_cursor_async(async_transport, PATH, FakeActivity.from_dict)
     ]
     assert items == []

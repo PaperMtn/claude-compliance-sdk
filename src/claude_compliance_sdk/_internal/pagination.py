@@ -27,10 +27,7 @@ from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, Mapping, TypeVar
 
-from claude_compliance_sdk._internal.base_transport import (
-    BaseAsyncTransport,
-    BaseTransport,
-)
+from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 
 T = TypeVar("T")
 
@@ -57,9 +54,7 @@ class CursorPage(Generic[T]):
     has_more: bool
 
     @classmethod
-    def from_dict(
-        cls, body: Mapping[str, Any], item_factory: ItemFactory[T]
-    ) -> "CursorPage[T]":
+    def from_dict(cls, body: Mapping[str, Any], item_factory: ItemFactory[T]) -> "CursorPage[T]":
         """Build a :class:`CursorPage` from a decoded response body."""
         raw_items = body.get("data") or []
         return cls(
@@ -85,9 +80,7 @@ class OffsetPage(Generic[T]):
     next_page: str | None
 
     @classmethod
-    def from_dict(
-        cls, body: Mapping[str, Any], item_factory: ItemFactory[T]
-    ) -> "OffsetPage[T]":
+    def from_dict(cls, body: Mapping[str, Any], item_factory: ItemFactory[T]) -> "OffsetPage[T]":
         """Build an :class:`OffsetPage` from a decoded response body."""
         raw_items = body.get("data") or []
         return cls(
