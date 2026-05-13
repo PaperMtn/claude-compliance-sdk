@@ -108,6 +108,13 @@ helpers — only the I/O layer differs.
   or `OffsetPage[T]`. The sibling `.iter()` method delegates to
   `iter_all_cursor_*` / `iter_all_offset_*` from
   `_internal/pagination.py` — do not reimplement the loop per resource.
+- **The `list` shadowing trick:** a resource method named `.list()`
+  shadows the `list` builtin in the class namespace, which breaks
+  `list[str]` annotations on sibling methods (`.iter()` and friends).
+  Define a module-level alias near the top of each paginated resource
+  file (`StrList = list[str]`, etc.) and use it for those parameter
+  types. The first occurrence (and the rationale) lives in
+  `resources/activities.py`.
 
 ## Testing conventions
 

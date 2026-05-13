@@ -48,5 +48,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.iter()` methods will plug into in Phase 3. `CursorPage`,
   `OffsetPage`, `AsyncCursorPage`, and `AsyncOffsetPage` are
   re-exported from `claude_compliance_sdk`.
+- Activities resource group (`Activities`, `AsyncActivities`) wrapping
+  `GET /v1/compliance/activities`. `.list(...)` returns
+  `CursorPage[Activity]`; `.iter(...)` auto-paginates. Filters cover
+  `organization_ids`, `actor_ids`, `activity_types`, the four
+  `created_at.*` comparators, `after_id` / `before_id`, and `limit`.
+  `Activity` is a plain dataclass with type-specific fields preserved
+  in `extra: dict` and re-exported from `claude_compliance_sdk`.
 
 [Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/HEAD...HEAD

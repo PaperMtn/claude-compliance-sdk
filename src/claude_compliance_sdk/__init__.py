@@ -40,6 +40,7 @@ from claude_compliance_sdk.exceptions import (
     PermissionDeniedError,
     RateLimitError,
 )
+from claude_compliance_sdk.resources.activities import Activity
 from claude_compliance_sdk.version import __version__
 
 __all__ = [
@@ -47,6 +48,7 @@ __all__ = [
     "APIError",
     "APIStatusError",
     "APITimeoutError",
+    "Activity",
     "AsyncComplianceClient",
     "AsyncCursorPage",
     "AsyncOffsetPage",
