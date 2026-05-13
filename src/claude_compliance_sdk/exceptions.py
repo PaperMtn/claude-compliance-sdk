@@ -41,7 +41,6 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, Mapping
 
-
 __all__ = [
     "APIConnectionError",
     "APIError",

@@ -26,7 +26,6 @@ from claude_compliance_sdk import (
 )
 from claude_compliance_sdk.exceptions import _parse_retry_after
 
-
 # ---------------------------------------------------------------------------
 # Hierarchy
 # ---------------------------------------------------------------------------
@@ -166,9 +165,7 @@ def test_from_response_routes_status_codes(
 
 
 def test_from_response_unmapped_4xx_uses_api_status_error() -> None:
-    err = APIError.from_response(
-        status_code=418, body=_spec_body("teapot_error", "I'm a teapot")
-    )
+    err = APIError.from_response(status_code=418, body=_spec_body("teapot_error", "I'm a teapot"))
     assert type(err) is APIStatusError
     assert err.status_code == 418
 
