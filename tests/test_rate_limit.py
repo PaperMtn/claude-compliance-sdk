@@ -39,9 +39,7 @@ def fake_clock(monkeypatch: pytest.MonkeyPatch) -> _FakeClock:
     monkeypatch.setattr(
         "claude_compliance_sdk._internal.rate_limit.time.monotonic", clock.monotonic
     )
-    monkeypatch.setattr(
-        "claude_compliance_sdk._internal.rate_limit.time.sleep", clock.sleep
-    )
+    monkeypatch.setattr("claude_compliance_sdk._internal.rate_limit.time.sleep", clock.sleep)
     monkeypatch.setattr(
         "claude_compliance_sdk._internal.rate_limit.asyncio.sleep", clock.async_sleep
     )
