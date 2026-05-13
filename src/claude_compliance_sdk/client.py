@@ -9,7 +9,7 @@ and ten resource group attributes.
 import os
 from types import TracebackType
 
-from claude_compliance_sdk._internal.base_transport import BaseTransport
+from claude_compliance_sdk._internal.transport import SyncTransport
 from claude_compliance_sdk.resources.activities import Activities
 from claude_compliance_sdk.resources.artifacts import Artifacts
 from claude_compliance_sdk.resources.chats import Chats
@@ -93,9 +93,14 @@ class ComplianceClient:
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
 
-        # Phase 2 will replace this placeholder with a real transport
-        # backed by httpx.Client.
-        self._transport: BaseTransport = BaseTransport()
+        self._transport: SyncTransport = SyncTransport(
+            api_key=resolved_key,
+            base_url=base_url,
+            timeout=timeout,
+            anthropic_version=anthropic_version,
+            max_retries=max_retries,
+            rate_limit_rpm=rate_limit_rpm,
+        )
 
         self.activities: Activities = Activities(self._transport)
         self.artifacts: Artifacts = Artifacts(self._transport)
@@ -114,6 +119,7 @@ class ComplianceClient:
         Safe to call multiple times. After ``close()`` is invoked, the
         client must not be reused.
         """
+        self._transport.close()
 
     def __enter__(self) -> "ComplianceClient":
         return self

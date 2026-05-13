@@ -9,7 +9,7 @@ swap one client for the other without changing call sites.
 import os
 from types import TracebackType
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport
+from claude_compliance_sdk._internal.transport import AsyncTransport
 from claude_compliance_sdk.client import (
     API_KEY_ENV_VAR,
     DEFAULT_ANTHROPIC_VERSION,
@@ -95,9 +95,14 @@ class AsyncComplianceClient:
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
 
-        # Phase 2 will replace this placeholder with a real transport
-        # backed by httpx.AsyncClient.
-        self._transport: BaseAsyncTransport = BaseAsyncTransport()
+        self._transport: AsyncTransport = AsyncTransport(
+            api_key=resolved_key,
+            base_url=base_url,
+            timeout=timeout,
+            anthropic_version=anthropic_version,
+            max_retries=max_retries,
+            rate_limit_rpm=rate_limit_rpm,
+        )
 
         self.activities: AsyncActivities = AsyncActivities(self._transport)
         self.artifacts: AsyncArtifacts = AsyncArtifacts(self._transport)
@@ -116,6 +121,7 @@ class AsyncComplianceClient:
         Safe to await multiple times. After ``aclose()`` is awaited, the
         client must not be reused.
         """
+        await self._transport.aclose()
 
     async def __aenter__(self) -> "AsyncComplianceClient":
         return self
