@@ -12,7 +12,6 @@ from types import TracebackType
 from claude_compliance_sdk._internal.transport import AsyncTransport
 from claude_compliance_sdk.client import (
     API_KEY_ENV_VAR,
-    DEFAULT_ANTHROPIC_VERSION,
     DEFAULT_BASE_URL,
     DEFAULT_MAX_DOWNLOAD_BYTES,
     DEFAULT_MAX_RETRIES,
@@ -46,8 +45,6 @@ class AsyncComplianceClient:
         base_url: Override the API host. Defaults to the Anthropic
             production host.
         timeout: Per-request timeout in seconds. Default 30.
-        anthropic_version: Value sent in the ``anthropic-version``
-            header. Defaults to ``"2023-06-01"``.
         max_download_bytes: Maximum size, in bytes, that the eager
             ``download()`` coroutines will load into memory. Larger
             files must be fetched through ``download_to_file()`` or
@@ -76,7 +73,6 @@ class AsyncComplianceClient:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
-        anthropic_version: str = DEFAULT_ANTHROPIC_VERSION,
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
         max_retries: int = DEFAULT_MAX_RETRIES,
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
@@ -90,7 +86,6 @@ class AsyncComplianceClient:
         self._api_key: str = resolved_key
         self.base_url: str = base_url
         self.timeout: float = timeout
-        self.anthropic_version: str = anthropic_version
         self.max_download_bytes: int = max_download_bytes
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -99,7 +94,6 @@ class AsyncComplianceClient:
             api_key=resolved_key,
             base_url=base_url,
             timeout=timeout,
-            anthropic_version=anthropic_version,
             max_retries=max_retries,
             rate_limit_rpm=rate_limit_rpm,
         )

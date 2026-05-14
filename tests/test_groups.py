@@ -8,14 +8,8 @@ from typing import Any
 import pytest
 from pytest_httpx import HTTPXMock
 
-from claude_compliance_sdk import (
-    AsyncComplianceClient,
-    ComplianceClient,
-    NotFoundError,
-    OffsetPage,
-)
+from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, NotFoundError, OffsetPage
 from claude_compliance_sdk.resources.groups import GROUPS_PATH, Group, GroupMember
-
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -116,9 +110,7 @@ def _members_url(suffix: str = "") -> str:
 # ---------------------------------------------------------------------------
 
 
-def test_list_returns_offset_page(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_returns_offset_page(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}",
         json={"data": [SPEC_EXAMPLE_GROUP], "has_more": False, "next_page": None},
@@ -128,9 +120,7 @@ def test_list_returns_offset_page(
     assert page.data[0].id == "group_abc123"
 
 
-def test_list_passes_limit_and_page(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_passes_limit_and_page(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}?limit=500&page=tok",
         json={"data": [], "has_more": False, "next_page": None},
@@ -142,9 +132,7 @@ def test_list_passes_limit_and_page(
     assert request.url.params["page"] == "tok"
 
 
-def test_iter_walks_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_walks_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}",
         json={"data": [_group("a")], "has_more": True, "next_page": "tok_1"},
@@ -157,9 +145,7 @@ def test_iter_walks_pages(
     assert ids == ["a", "b"]
 
 
-def test_get_returns_group(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_returns_group(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}/{GROUP_ID}",
         json=SPEC_EXAMPLE_GROUP,
@@ -168,9 +154,7 @@ def test_get_returns_group(
     assert group.id == GROUP_ID
 
 
-def test_get_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}/{GROUP_ID}",
         status_code=404,
@@ -185,9 +169,7 @@ def test_get_404_raises_not_found(
 # ---------------------------------------------------------------------------
 
 
-def test_list_members(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_members(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_members_url(),
         json={
@@ -201,9 +183,7 @@ def test_list_members(
     assert page.data[0].user_id == "user_abc123"
 
 
-def test_iter_members_walks_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_members_walks_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_members_url(),
         json={
@@ -229,9 +209,7 @@ def test_iter_members_walks_pages(
 # ---------------------------------------------------------------------------
 
 
-async def test_async_list(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_list(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}",
         json={"data": [SPEC_EXAMPLE_GROUP], "has_more": False, "next_page": None},
@@ -240,9 +218,7 @@ async def test_async_list(
     assert page.data[0].name == "Engineering"
 
 
-async def test_async_iter(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_iter(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}",
         json={"data": [_group("a")], "has_more": True, "next_page": "tok_1"},
@@ -255,9 +231,7 @@ async def test_async_iter(
     assert ids == ["a", "b"]
 
 
-async def test_async_get(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_get(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GROUPS_PATH}/{GROUP_ID}",
         json=SPEC_EXAMPLE_GROUP,

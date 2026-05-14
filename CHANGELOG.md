@@ -135,6 +135,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for manually-created groups or ``"scim"`` for groups pushed by an
   IdP via directory sync.
 
+### Removed
+
+- The SDK no longer sends the `anthropic-version` request header by
+  default. It was a Messages API convention we incorrectly carried
+  into the Compliance transport; the Rev K spec only requires
+  `x-api-key`, and production `/v1/compliance/*` paths route to a
+  different surface and 404 when the version header is present.
+  Removed the `anthropic_version` kwarg from `ComplianceClient` /
+  `AsyncComplianceClient` and the `DEFAULT_ANTHROPIC_VERSION`
+  constant. Callers who were relying on the kwarg should drop it;
+  there is no functional replacement.
+
 ### Changed
 
 - `OffsetPage` now exposes `has_more: bool` alongside `next_page` to

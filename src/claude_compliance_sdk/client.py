@@ -23,7 +23,6 @@ from claude_compliance_sdk.resources.roles import Roles
 
 DEFAULT_BASE_URL = "https://api.anthropic.com"
 DEFAULT_TIMEOUT_SECONDS = 30.0
-DEFAULT_ANTHROPIC_VERSION = "2023-06-01"
 DEFAULT_MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RATE_LIMIT_RPM = 600
@@ -47,8 +46,6 @@ class ComplianceClient:
             production host. Useful for testing against a recorded
             fixture server.
         timeout: Per-request timeout in seconds. Default 30.
-        anthropic_version: Value sent in the ``anthropic-version``
-            header. Defaults to ``"2023-06-01"``.
         max_download_bytes: Maximum size, in bytes, that the eager
             ``download()`` methods will load into memory. Larger files
             must be fetched through ``download_to_file()`` or
@@ -74,7 +71,6 @@ class ComplianceClient:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
-        anthropic_version: str = DEFAULT_ANTHROPIC_VERSION,
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
         max_retries: int = DEFAULT_MAX_RETRIES,
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
@@ -88,7 +84,6 @@ class ComplianceClient:
         self._api_key: str = resolved_key
         self.base_url: str = base_url
         self.timeout: float = timeout
-        self.anthropic_version: str = anthropic_version
         self.max_download_bytes: int = max_download_bytes
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -97,7 +92,6 @@ class ComplianceClient:
             api_key=resolved_key,
             base_url=base_url,
             timeout=timeout,
-            anthropic_version=anthropic_version,
             max_retries=max_retries,
             rate_limit_rpm=rate_limit_rpm,
         )

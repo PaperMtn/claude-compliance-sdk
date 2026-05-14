@@ -239,5 +239,7 @@ any of these change in a future spec rev, update them here and bump the
 - **`GET /organizations`** has no pagination; errors when the result
   would exceed 1,000 organisations.
 - **Error shape:** `{"error": {"type": "...", "message": "..."}}`.
-- **Anthropic version header:** `anthropic-version: 2023-06-01` (default;
-  override via the `anthropic_version` client kwarg).
+- **Request headers:** only `x-api-key` is required by the spec. The
+  Messages API `anthropic-version` header is **not** used by the
+  Compliance API — sending it routes the request to a different
+  surface and 404s the `/v1/compliance/*` paths.

@@ -43,7 +43,6 @@ def sync_transport() -> SyncTransport:
         api_key=API_KEY,
         base_url=BASE_URL,
         timeout=30.0,
-        anthropic_version="2023-06-01",
         max_retries=0,
         rate_limit_rpm=0,
     )
@@ -57,7 +56,6 @@ async def async_transport() -> AsyncTransport:
         api_key=API_KEY,
         base_url=BASE_URL,
         timeout=30.0,
-        anthropic_version="2023-06-01",
         max_retries=0,
         rate_limit_rpm=0,
     )

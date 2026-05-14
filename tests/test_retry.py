@@ -157,7 +157,6 @@ def _sync_transport(max_retries: int = 3) -> SyncTransport:
         api_key=API_KEY,
         base_url=BASE_URL,
         timeout=30.0,
-        anthropic_version="2023-06-01",
         max_retries=max_retries,
         rate_limit_rpm=600,
     )
@@ -168,7 +167,6 @@ def _async_transport(max_retries: int = 3) -> AsyncTransport:
         api_key=API_KEY,
         base_url=BASE_URL,
         timeout=30.0,
-        anthropic_version="2023-06-01",
         max_retries=max_retries,
         rate_limit_rpm=600,
     )
