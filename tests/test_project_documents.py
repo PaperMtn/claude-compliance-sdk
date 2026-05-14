@@ -8,16 +8,11 @@ from typing import Any
 import pytest
 from pytest_httpx import HTTPXMock
 
-from claude_compliance_sdk import (
-    AsyncComplianceClient,
-    ComplianceClient,
-    NotFoundError,
-)
+from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, NotFoundError
 from claude_compliance_sdk.resources.project_documents import (
     PROJECT_DOCUMENTS_PATH,
     ProjectDocument,
 )
-
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -96,9 +91,7 @@ async def async_client() -> AsyncComplianceClient:
 # ---------------------------------------------------------------------------
 
 
-def test_get_returns_project_document(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_returns_project_document(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECT_DOCUMENTS_PATH}/{DOCUMENT_ID}",
         json=SPEC_EXAMPLE_DOCUMENT,
@@ -108,9 +101,7 @@ def test_get_returns_project_document(
     assert doc.content == "Always cite KPIs in summaries."
 
 
-def test_get_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     # Verbatim from the spec's Not Found (404) example.
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECT_DOCUMENTS_PATH}/{DOCUMENT_ID}",
@@ -119,8 +110,7 @@ def test_get_404_raises_not_found(
             "error": {
                 "type": "not_found_error",
                 "message": (
-                    "No project document found with provided id, or it has "
-                    "already been deleted."
+                    "No project document found with provided id, or it has " "already been deleted."
                 ),
             }
         },
@@ -140,9 +130,7 @@ def test_delete_returns_none_on_success(
     assert sync_client.project_documents.delete(DOCUMENT_ID) is None
 
 
-def test_delete_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_delete_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECT_DOCUMENTS_PATH}/{DOCUMENT_ID}",
         method="DELETE",
@@ -163,9 +151,7 @@ def test_delete_404_raises_not_found(
 # ---------------------------------------------------------------------------
 
 
-async def test_async_get(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_get(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECT_DOCUMENTS_PATH}/{DOCUMENT_ID}",
         json=SPEC_EXAMPLE_DOCUMENT,
@@ -174,9 +160,7 @@ async def test_async_get(
     assert doc.id == DOCUMENT_ID
 
 
-async def test_async_delete(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_delete(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECT_DOCUMENTS_PATH}/{DOCUMENT_ID}",
         method="DELETE",
