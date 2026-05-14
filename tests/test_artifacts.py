@@ -15,7 +15,6 @@ from claude_compliance_sdk import (
 )
 from claude_compliance_sdk.resources.artifacts import ARTIFACTS_PATH
 
-
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
 ARTIFACT_VERSION_ID = "claude_artifact_version_xyz789"
@@ -56,16 +55,12 @@ def _content_url() -> str:
 # ---------------------------------------------------------------------------
 
 
-def test_download_returns_bytes(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_download_returns_bytes(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=_content_url(), content=b"# Markdown Artifact\n\n...")
     assert sync_client.artifacts.download(ARTIFACT_VERSION_ID).startswith(b"# Markdown")
 
 
-def test_download_rejects_oversize(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_download_rejects_oversize(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_content_url(),
         content=b"x",
@@ -85,9 +80,7 @@ def test_download_to_file(
     assert dest.stat().st_size == 4096
 
 
-def test_download_stream(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_download_stream(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=_content_url(), content=b"streamed")
     collected = b"".join(sync_client.artifacts.download_stream(ARTIFACT_VERSION_ID))
     assert collected == b"streamed"
@@ -118,13 +111,9 @@ def test_no_get_or_delete_methods() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_async_download(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_download(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=_content_url(), content=b"async artifact")
-    assert (
-        await async_client.artifacts.download(ARTIFACT_VERSION_ID) == b"async artifact"
-    )
+    assert await async_client.artifacts.download(ARTIFACT_VERSION_ID) == b"async artifact"
 
 
 async def test_async_download_to_file(
@@ -141,9 +130,6 @@ async def test_async_download_stream(
 ) -> None:
     httpx_mock.add_response(url=_content_url(), content=b"chunked-artifact")
     collected = b"".join(
-        [
-            chunk
-            async for chunk in async_client.artifacts.download_stream(ARTIFACT_VERSION_ID)
-        ]
+        [chunk async for chunk in async_client.artifacts.download_stream(ARTIFACT_VERSION_ID)]
     )
     assert collected == b"chunked-artifact"

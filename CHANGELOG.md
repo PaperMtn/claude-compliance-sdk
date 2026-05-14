@@ -117,6 +117,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cap and the reported `size_bytes` when the server supplied a
   `Content-Length`. Re-exported from `claude_compliance_sdk`.
 - `File` and `GeneratedFile` dataclasses are re-exported.
+- Roles resource group (`Roles`, `AsyncRoles`) wrapping the
+  org-scoped roles endpoints:
+  `GET /v1/compliance/organizations/{org_uuid}/roles`
+  (offset-paginated `.list(org_uuid, ...)` / `.iter(org_uuid, ...)`),
+  `GET /v1/compliance/organizations/{org_uuid}/roles/{role_id}`
+  (`.get(org_uuid, role_id)`), and
+  `GET /v1/compliance/organizations/{org_uuid}/roles/{role_id}/permissions`
+  (`.list_permissions(...)` / `.iter_permissions(...)`). `Role` and
+  `Permission` dataclasses are re-exported.
+- Groups resource group (`Groups`, `AsyncGroups`) wrapping
+  `GET /v1/compliance/groups` (`.list()` / `.iter()`),
+  `GET /v1/compliance/groups/{group_id}` (`.get()`), and
+  `GET /v1/compliance/groups/{group_id}/members`
+  (`.list_members()` / `.iter_members()`). `Group` and `GroupMember`
+  dataclasses are re-exported. Group sources are tagged ``"direct"``
+  for manually-created groups or ``"scim"`` for groups pushed by an
+  IdP via directory sync.
 
 ### Changed
 
