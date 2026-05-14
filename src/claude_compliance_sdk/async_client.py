@@ -105,10 +105,14 @@ class AsyncComplianceClient:
         )
 
         self.activities: AsyncActivities = AsyncActivities(self._transport)
-        self.artifacts: AsyncArtifacts = AsyncArtifacts(self._transport)
+        self.artifacts: AsyncArtifacts = AsyncArtifacts(
+            self._transport, max_download_bytes=max_download_bytes
+        )
         self.chats: AsyncChats = AsyncChats(self._transport)
-        self.files: AsyncFiles = AsyncFiles(self._transport)
-        self.generated_files: AsyncGeneratedFiles = AsyncGeneratedFiles(self._transport)
+        self.files: AsyncFiles = AsyncFiles(self._transport, max_download_bytes=max_download_bytes)
+        self.generated_files: AsyncGeneratedFiles = AsyncGeneratedFiles(
+            self._transport, max_download_bytes=max_download_bytes
+        )
         self.groups: AsyncGroups = AsyncGroups(self._transport)
         self.organizations: AsyncOrganizations = AsyncOrganizations(self._transport)
         self.project_documents: AsyncProjectDocuments = AsyncProjectDocuments(self._transport)

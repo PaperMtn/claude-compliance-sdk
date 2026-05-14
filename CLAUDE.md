@@ -135,6 +135,14 @@ helpers — only the I/O layer differs.
   success is signalled by no exception being raised. Errors raise
   the usual `APIError` subclasses (`NotFoundError`, `ConflictError`,
   …).
+- **Download endpoints** route through the shared helpers in
+  `_internal/downloads.py`: `download_eager_*` for the bounded
+  eager read (raises `FileTooLargeError` past `max_download_bytes`),
+  `download_to_file_*` for streamed-to-disk (unbounded — the cap
+  protects memory, not disk), `download_stream_*` for caller-managed
+  chunk iteration. Resources that need them take a
+  `max_download_bytes` constructor kwarg; the public clients pass
+  the config through.
 
 ## Testing conventions
 

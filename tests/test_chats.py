@@ -17,12 +17,7 @@ from typing import Any
 import pytest
 from pytest_httpx import HTTPXMock
 
-from claude_compliance_sdk import (
-    AsyncComplianceClient,
-    ComplianceClient,
-    CursorPage,
-    NotFoundError,
-)
+from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, CursorPage, NotFoundError
 from claude_compliance_sdk.resources.chats import (
     CHATS_PATH,
     Chat,
@@ -32,7 +27,6 @@ from claude_compliance_sdk.resources.chats import (
     _build_messages_params,
     _validate_user_ids,
 )
-
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -251,6 +245,9 @@ def test_build_messages_params() -> None:
         "after_id": "a",
         "limit": 100,
     }
+    assert _build_messages_params(after_id=None, before_id="b", limit=None) == {
+        "before_id": "b",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -294,9 +291,7 @@ def test_list_validates_user_ids_locally(sync_client: ComplianceClient) -> None:
         sync_client.chats.list(user_ids=[f"u{i}" for i in range(11)])
 
 
-def test_list_returns_cursor_page(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_returns_cursor_page(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{CHATS_PATH}?user_ids%5B%5D=u1",
         json={
@@ -312,9 +307,7 @@ def test_list_returns_cursor_page(
     assert isinstance(page.data[0], Chat)
 
 
-def test_list_passes_filters(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_passes_filters(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=(
             f"{BASE_URL}{CHATS_PATH}"
@@ -337,9 +330,7 @@ def test_list_passes_filters(
     assert request.url.params.get_list("project_ids[]") == ["proj_a"]
 
 
-def test_iter_walks_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_walks_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{CHATS_PATH}?user_ids%5B%5D=u1",
         json={
@@ -396,9 +387,7 @@ def test_get_returns_chat_messages_page(
     assert result.messages.has_more is False
 
 
-def test_get_passes_cursor_params(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_passes_cursor_params(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_messages_url("?after_id=msg_abc&limit=10"),
         json=_chat_with_messages(has_more=False),
@@ -410,9 +399,7 @@ def test_get_passes_cursor_params(
     assert request.url.params["limit"] == "10"
 
 
-def test_get_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     # Verbatim from the spec's Chat Not Found example.
     httpx_mock.add_response(
         url=_messages_url(),
@@ -423,9 +410,7 @@ def test_get_404_raises_not_found(
         sync_client.chats.get(CHAT_ID)
 
 
-def test_iter_messages_walks_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_messages_walks_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_messages_url(),
         json=_chat_with_messages(
@@ -451,9 +436,7 @@ def test_iter_messages_walks_pages(
     ]
 
 
-def test_iter_messages_empty(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_messages_empty(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_messages_url(),
         json=_chat_with_messages(has_more=False),
@@ -475,9 +458,7 @@ def test_delete_returns_none(sync_client: ComplianceClient, httpx_mock: HTTPXMoc
     assert sync_client.chats.delete(CHAT_ID) is None
 
 
-def test_delete_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_delete_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{CHATS_PATH}/{CHAT_ID}",
         method="DELETE",
@@ -578,9 +559,7 @@ async def test_async_iter_messages_walks_pages(
     ]
 
 
-async def test_async_delete(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_delete(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{CHATS_PATH}/{CHAT_ID}",
         method="DELETE",

@@ -157,7 +157,7 @@ claude_compliance_sdk/
 │   ├── rate_limit.py           # sliding-window rate limiter
 │   ├── pagination.py           # CursorPage, OffsetPage, iter_all helpers
 │   ├── parsing.py              # parse_with_extra for response dataclasses
-│   └── downloads.py            # eager / streamed download helpers (Phase 3.5)
+│   └── downloads.py            # eager / streamed / to-file download helpers
 └── resources/                  # one module per resource group
     ├── activities.py
     ├── artifacts.py
