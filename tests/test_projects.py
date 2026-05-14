@@ -32,7 +32,6 @@ from claude_compliance_sdk.resources.projects import (
     _build_list_params,
 )
 
-
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
 PROJECT_ID = "claude_proj_abc123"
@@ -226,9 +225,7 @@ async def async_client() -> AsyncComplianceClient:
 # ---------------------------------------------------------------------------
 
 
-def test_list_returns_offset_page(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_returns_offset_page(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECTS_PATH}",
         json={"data": [SPEC_EXAMPLE_PROJECT], "has_more": False, "next_page": None},
@@ -239,9 +236,7 @@ def test_list_returns_offset_page(
     assert isinstance(page.data[0], Project)
 
 
-def test_list_sends_filters(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_sends_filters(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=(
             f"{BASE_URL}{PROJECTS_PATH}"
@@ -264,9 +259,7 @@ def test_list_sends_filters(
     assert request.url.params.get_list("user_ids[]") == ["user_x"]
 
 
-def test_iter_walks_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_walks_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECTS_PATH}",
         json={"data": [_project("a")], "has_more": True, "next_page": "tok_1"},
@@ -284,9 +277,7 @@ def test_iter_walks_pages(
 # ---------------------------------------------------------------------------
 
 
-def test_get_returns_project_detail(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_returns_project_detail(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECTS_PATH}/{PROJECT_ID}",
         json=SPEC_EXAMPLE_PROJECT_DETAIL,
@@ -296,9 +287,7 @@ def test_get_returns_project_detail(
     assert detail.chats_count == 12
 
 
-def test_get_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECTS_PATH}/{PROJECT_ID}",
         status_code=404,
@@ -372,9 +361,7 @@ def test_list_attachments_returns_mixed_types(
     assert [att.type for att in page.data] == ["project_file", "project_doc"]
 
 
-def test_iter_attachments_walks_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_attachments_walks_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_attachments_url(),
         json={
@@ -415,9 +402,7 @@ async def test_async_list_and_iter(
     assert ids == ["a", "b"]
 
 
-async def test_async_get(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_get(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{PROJECTS_PATH}/{PROJECT_ID}",
         json=SPEC_EXAMPLE_PROJECT_DETAIL,

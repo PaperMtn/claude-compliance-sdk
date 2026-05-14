@@ -41,6 +41,7 @@ from claude_compliance_sdk.exceptions import (
     RateLimitError,
 )
 from claude_compliance_sdk.resources.activities import Activity
+from claude_compliance_sdk.resources.chats import Chat, ChatMessagesPage, Message
 from claude_compliance_sdk.resources.organizations import Organization, User
 from claude_compliance_sdk.resources.project_documents import ProjectDocument
 from claude_compliance_sdk.resources.projects import Project, ProjectAttachment, ProjectDetail
@@ -57,6 +58,8 @@ __all__ = [
     "AsyncOffsetPage",
     "AuthenticationError",
     "BadRequestError",
+    "Chat",
+    "ChatMessagesPage",
     "ComplianceClient",
     "ComplianceClientError",
     "ConflictError",
@@ -64,6 +67,7 @@ __all__ = [
     "InsufficientScopeError",
     "InternalServerError",
     "InvalidAPIKeyError",
+    "Message",
     "NotFoundError",
     "OffsetPage",
     "Organization",

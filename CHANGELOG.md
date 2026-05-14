@@ -81,6 +81,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`.get()` → `ProjectDocument` with full text content) and the
   matching `DELETE` (`.delete()` → `None`). `ProjectDocument` is
   re-exported.
+- Chats resource group (`Chats`, `AsyncChats`) wrapping
+  `GET /v1/compliance/apps/chats` (cursor-paginated `.list()` /
+  `.iter()` with the full filter set; `user_ids[]` is **required**
+  and validated client-side as 1–10 IDs per locked decision 14
+  before the request is sent — raises `ValueError` otherwise),
+  `GET /v1/compliance/apps/chats/{chat_id}/messages` (`.get()` →
+  `ChatMessagesPage` with the chat metadata plus one cursor-paginated
+  page of messages; `.iter_messages()` walks every message across
+  pages), and `DELETE /v1/compliance/apps/chats/{chat_id}`
+  (`.delete()` → `None`). `Chat`, `Message`, and `ChatMessagesPage`
+  dataclasses are re-exported from `claude_compliance_sdk`.
 
 ### Changed
 
