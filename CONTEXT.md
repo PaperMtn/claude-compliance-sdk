@@ -212,6 +212,8 @@ issue first.
 | 12  | git-flow branch model. PRs target `develop`. Releases cut from `develop` to `main`.                                                                   | 2026-05-13 | locked |
 | 13  | Three binary backends (user files / generated files / artifacts) modelled as three resource groups, not one.                                          | 2026-05-13 | locked |
 | 14  | `user_ids[]` length on `GET /apps/chats` validated client-side (1–10). Other server-side rules not duplicated.                                        | 2026-05-13 | locked |
+| 15  | Concrete transports without abstract bases. ABCs deleted; resources type-hint `SyncTransport` / `AsyncTransport` directly. See [ADR-0001](adr/0001-concrete-transports-without-abstract-bases.md). | 2026-05-13 | locked |
+| 16  | Response dataclass parsing via `parse_with_extra(cls, body)` over `dataclasses.fields(cls)`. No per-field coercion, no nested-type recursion. See [ADR-0002](adr/0002-response-dataclass-parsing-via-dataclasses-fields.md). | 2026-05-13 | locked |
 
 Promote any of these to a full ADR (`docs/adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
