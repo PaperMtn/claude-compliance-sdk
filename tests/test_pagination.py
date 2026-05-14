@@ -101,16 +101,27 @@ def test_cursor_page_from_dict_null_data_treated_as_empty() -> None:
 
 
 def test_offset_page_from_dict_full_body() -> None:
-    body = {"data": [{"id": "x"}], "next_page": "tok_abc"}
+    body = {"data": [{"id": "x"}], "has_more": True, "next_page": "tok_abc"}
     page = OffsetPage.from_dict(body, FakeActivity.from_dict)
     assert page.data == [FakeActivity(id="x")]
+    assert page.has_more is True
     assert page.next_page == "tok_abc"
 
 
 def test_offset_page_from_dict_no_next_page() -> None:
-    page = OffsetPage.from_dict({"data": [], "next_page": None}, FakeActivity.from_dict)
+    page = OffsetPage.from_dict(
+        {"data": [], "has_more": False, "next_page": None}, FakeActivity.from_dict
+    )
     assert page.data == []
+    assert page.has_more is False
     assert page.next_page is None
+
+
+def test_offset_page_from_dict_defaults_has_more_to_false() -> None:
+    # Older / minimal payloads that omit has_more should still parse;
+    # the absent flag falls back to False to match "no more pages".
+    page = OffsetPage.from_dict({"data": [], "next_page": None}, FakeActivity.from_dict)
+    assert page.has_more is False
 
 
 def test_async_page_aliases_match_sync_classes() -> None:

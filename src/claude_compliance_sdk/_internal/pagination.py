@@ -71,12 +71,16 @@ class OffsetPage(Generic[T]):
 
     Attributes:
         data: Decoded items from the page's ``data`` array.
+        has_more: Server-supplied flag indicating whether further pages
+            exist after this one. Equivalent to
+            ``next_page is not None``.
         next_page: Opaque pagination token returned by the server.
             Pass it as the ``page`` query parameter to fetch the next
             page. ``None`` when this is the last page.
     """
 
     data: list[T]
+    has_more: bool
     next_page: str | None
 
     @classmethod
@@ -85,6 +89,7 @@ class OffsetPage(Generic[T]):
         raw_items = body.get("data") or []
         return cls(
             data=[item_factory(item) for item in raw_items],
+            has_more=bool(body.get("has_more", False)),
             next_page=_str_or_none(body.get("next_page")),
         )
 
