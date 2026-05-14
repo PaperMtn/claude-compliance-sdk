@@ -41,6 +41,7 @@ from claude_compliance_sdk.exceptions import (
     RateLimitError,
 )
 from claude_compliance_sdk.resources.activities import Activity
+from claude_compliance_sdk.resources.organizations import Organization, User
 from claude_compliance_sdk.version import __version__
 
 __all__ = [
@@ -63,7 +64,9 @@ __all__ = [
     "InvalidAPIKeyError",
     "NotFoundError",
     "OffsetPage",
+    "Organization",
     "PermissionDeniedError",
     "RateLimitError",
+    "User",
     "__version__",
 ]

@@ -55,5 +55,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `created_at.*` comparators, `after_id` / `before_id`, and `limit`.
   `Activity` is a plain dataclass with type-specific fields preserved
   in `extra: dict` and re-exported from `claude_compliance_sdk`.
+- Organizations resource group (`Organizations`, `AsyncOrganizations`).
+  `.list()` returns `list[Organization]` for the unpaginated
+  `GET /v1/compliance/organizations` endpoint; the spec's 1,000-org
+  cap surfaces as `InternalServerError` rather than being papered
+  over. `.list_users(org_uuid, ...)` returns `OffsetPage[User]` and
+  `.iter_users(org_uuid, ...)` auto-paginates over
+  `GET /v1/compliance/organizations/{org_uuid}/users`. `Organization`
+  and `User` dataclasses are re-exported from `claude_compliance_sdk`.
+
+### Changed
+
+- `OffsetPage` now exposes `has_more: bool` alongside `next_page` to
+  match the wire format symmetrically with `CursorPage` and to give
+  callers an explicit "is there more?" flag. Backward-compatible:
+  payloads that omit the field default to `False`.
 
 [Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/HEAD...HEAD
