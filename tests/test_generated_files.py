@@ -14,11 +14,7 @@ from claude_compliance_sdk import (
     FileTooLargeError,
     NotFoundError,
 )
-from claude_compliance_sdk.resources.generated_files import (
-    GENERATED_FILES_PATH,
-    GeneratedFile,
-)
-
+from claude_compliance_sdk.resources.generated_files import GENERATED_FILES_PATH, GeneratedFile
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -99,9 +95,7 @@ def _content_url() -> str:
 # ---------------------------------------------------------------------------
 
 
-def test_get_returns_metadata(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_returns_metadata(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GENERATED_FILES_PATH}/{GEN_FILE_ID}",
         json=SPEC_EXAMPLE_GENERATED_FILE,
@@ -111,9 +105,7 @@ def test_get_returns_metadata(
     assert f.claude_chat_id == "claude_chat_xyz789"
 
 
-def test_get_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GENERATED_FILES_PATH}/{GEN_FILE_ID}",
         status_code=404,
@@ -123,16 +115,12 @@ def test_get_404_raises_not_found(
         sync_client.generated_files.get(GEN_FILE_ID)
 
 
-def test_download_returns_bytes(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_download_returns_bytes(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=_content_url(), content=b"spreadsheet bytes")
     assert sync_client.generated_files.download(GEN_FILE_ID) == b"spreadsheet bytes"
 
 
-def test_download_rejects_oversize(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_download_rejects_oversize(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_content_url(),
         content=b"x",
@@ -151,9 +139,7 @@ def test_download_to_file(
     assert dest.stat().st_size == 5000
 
 
-def test_download_stream(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_download_stream(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=_content_url(), content=b"chunked")
     collected = b"".join(sync_client.generated_files.download_stream(GEN_FILE_ID))
     assert collected == b"chunked"
@@ -171,9 +157,7 @@ def test_no_delete_method() -> None:
 # ---------------------------------------------------------------------------
 
 
-async def test_async_get(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_get(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{GENERATED_FILES_PATH}/{GEN_FILE_ID}",
         json=SPEC_EXAMPLE_GENERATED_FILE,
@@ -182,9 +166,7 @@ async def test_async_get(
     assert f.filename == "data_analysis.xlsx"
 
 
-async def test_async_download(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_download(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=_content_url(), content=b"async bytes")
     assert await async_client.generated_files.download(GEN_FILE_ID) == b"async bytes"
 

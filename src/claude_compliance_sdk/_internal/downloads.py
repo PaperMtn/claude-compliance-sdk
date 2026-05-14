@@ -35,7 +35,7 @@ import httpx
 from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 from claude_compliance_sdk.exceptions import FileTooLargeError
 
-PathLike = Union[str, "os.PathLike[str]"]
+PathLike = Union[str, os.PathLike[str]]
 
 
 # ---------------------------------------------------------------------------

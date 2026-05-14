@@ -45,9 +45,11 @@ from claude_compliance_sdk.resources.activities import Activity
 from claude_compliance_sdk.resources.chats import Chat, ChatMessagesPage, Message
 from claude_compliance_sdk.resources.files import File
 from claude_compliance_sdk.resources.generated_files import GeneratedFile
+from claude_compliance_sdk.resources.groups import Group, GroupMember
 from claude_compliance_sdk.resources.organizations import Organization, User
 from claude_compliance_sdk.resources.project_documents import ProjectDocument
 from claude_compliance_sdk.resources.projects import Project, ProjectAttachment, ProjectDetail
+from claude_compliance_sdk.resources.roles import Permission, Role
 from claude_compliance_sdk.version import __version__
 
 __all__ = [
@@ -70,6 +72,8 @@ __all__ = [
     "File",
     "FileTooLargeError",
     "GeneratedFile",
+    "Group",
+    "GroupMember",
     "InsufficientScopeError",
     "InternalServerError",
     "InvalidAPIKeyError",
@@ -77,12 +81,14 @@ __all__ = [
     "NotFoundError",
     "OffsetPage",
     "Organization",
+    "Permission",
     "PermissionDeniedError",
     "Project",
     "ProjectAttachment",
     "ProjectDetail",
     "ProjectDocument",
     "RateLimitError",
+    "Role",
     "User",
     "__version__",
 ]

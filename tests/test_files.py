@@ -16,7 +16,6 @@ from claude_compliance_sdk import (
 )
 from claude_compliance_sdk.resources.files import FILES_PATH, File
 
-
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
 FILE_ID = "claude_file_xyz789"
@@ -93,9 +92,7 @@ async def async_client() -> AsyncComplianceClient:
 # ---------------------------------------------------------------------------
 
 
-def test_get_returns_file_metadata(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_returns_file_metadata(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{FILES_PATH}/{FILE_ID}",
         json=SPEC_EXAMPLE_FILE,
@@ -105,18 +102,14 @@ def test_get_returns_file_metadata(
     assert file_.id == FILE_ID
 
 
-def test_get_404_raises_not_found(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_get_404_raises_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{FILES_PATH}/{FILE_ID}",
         status_code=404,
         json={
             "error": {
                 "type": "not_found_error",
-                "message": (
-                    "No file found with provided id, or it has already been deleted."
-                ),
+                "message": ("No file found with provided id, or it has already been deleted."),
             }
         },
     )
@@ -206,9 +199,7 @@ def test_download_404_raises_not_found(
 # ---------------------------------------------------------------------------
 
 
-def test_delete_returns_none(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_delete_returns_none(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{FILES_PATH}/{FILE_ID}",
         method="DELETE",
@@ -222,12 +213,8 @@ def test_delete_returns_none(
 # ---------------------------------------------------------------------------
 
 
-async def test_async_get(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
-    httpx_mock.add_response(
-        url=f"{BASE_URL}{FILES_PATH}/{FILE_ID}", json=SPEC_EXAMPLE_FILE
-    )
+async def test_async_get(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(url=f"{BASE_URL}{FILES_PATH}/{FILE_ID}", json=SPEC_EXAMPLE_FILE)
     file_ = await async_client.files.get(FILE_ID)
     assert file_.id == FILE_ID
 
@@ -266,15 +253,11 @@ async def test_async_download_stream(
 ) -> None:
     payload = b"async chunks"
     httpx_mock.add_response(url=_content_url(), content=payload)
-    collected = b"".join(
-        [chunk async for chunk in async_client.files.download_stream(FILE_ID)]
-    )
+    collected = b"".join([chunk async for chunk in async_client.files.download_stream(FILE_ID)])
     assert collected == payload
 
 
-async def test_async_delete(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_delete(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{FILES_PATH}/{FILE_ID}",
         method="DELETE",
