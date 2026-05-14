@@ -29,7 +29,6 @@ from claude_compliance_sdk.resources.organizations import (
     _build_user_params,
 )
 
-
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
 ORG_UUID = "abcdef01-2345-6789-abcd-0123456789ab"
@@ -173,9 +172,7 @@ def test_list_surfaces_1000_org_cap_as_internal_server_error(
     assert "1,000 organizations" in (exc_info.value.error_message or "")
 
 
-def test_list_sends_no_query_params(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_list_sends_no_query_params(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(url=f"{BASE_URL}{ORGANIZATIONS_PATH}", json={"data": []})
     sync_client.organizations.list()
     request = httpx_mock.get_request()
@@ -221,9 +218,7 @@ def test_list_users_passes_limit_and_page(
     assert request.url.params["page"] == "tok_abc"
 
 
-def test_iter_users_walks_pages(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_users_walks_pages(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_users_url(),
         json={"data": [_user("a")], "has_more": True, "next_page": "tok_1"},
@@ -251,9 +246,7 @@ def test_iter_users_carries_limit_across_pages(
     assert [u.id for u in users] == ["a", "b"]
 
 
-def test_iter_users_empty(
-    sync_client: ComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+def test_iter_users_empty(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_users_url(),
         json={"data": [], "has_more": False, "next_page": None},
@@ -295,9 +288,7 @@ async def test_async_list_surfaces_1000_org_cap(
         await async_client.organizations.list()
 
 
-async def test_async_list_users(
-    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
-) -> None:
+async def test_async_list_users(async_client: AsyncComplianceClient, httpx_mock: HTTPXMock) -> None:
     httpx_mock.add_response(
         url=_users_url(),
         json={"data": [SPEC_EXAMPLE_USER], "has_more": False, "next_page": None},

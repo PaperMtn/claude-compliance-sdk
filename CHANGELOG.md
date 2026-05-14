@@ -63,6 +63,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.iter_users(org_uuid, ...)` auto-paginates over
   `GET /v1/compliance/organizations/{org_uuid}/users`. `Organization`
   and `User` dataclasses are re-exported from `claude_compliance_sdk`.
+- Projects resource group (`Projects`, `AsyncProjects`) wrapping
+  `GET /v1/compliance/apps/projects` (offset-paginated `.list()` /
+  `.iter()`), `GET /v1/compliance/apps/projects/{project_id}`
+  (`.get()` → `ProjectDetail`),
+  `DELETE /v1/compliance/apps/projects/{project_id}` (`.delete()` →
+  `None`; 409 surfaces as `ConflictError` when chats are still
+  attached), and
+  `GET /v1/compliance/apps/projects/{project_id}/attachments`
+  (`.list_attachments()` / `.iter_attachments()` returning
+  `ProjectAttachment` items discriminated by ``type``
+  `"project_file"` / `"project_doc"`). `Project`, `ProjectDetail`,
+  and `ProjectAttachment` dataclasses are re-exported.
+- Project Documents resource group (`ProjectDocuments`,
+  `AsyncProjectDocuments`) wrapping
+  `GET /v1/compliance/apps/projects/documents/{document_id}`
+  (`.get()` → `ProjectDocument` with full text content) and the
+  matching `DELETE` (`.delete()` → `None`). `ProjectDocument` is
+  re-exported.
 
 ### Changed
 

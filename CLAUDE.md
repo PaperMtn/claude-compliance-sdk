@@ -122,6 +122,19 @@ helpers — only the I/O layer differs.
   `parse_with_extra(cls, body)` from `_internal/parsing.py` — do not
   maintain a parallel `_KNOWN_FIELDS` frozenset; the helper derives
   the known set from `dataclasses.fields(cls)`.
+- **List vs Detail shapes:** when the spec returns a richer payload
+  on `.get()` than on `.list()` (see `ComplianceProject` vs
+  `ComplianceProjectDetail`), model both — the list class with the
+  shallow fields, and a `<Name>Detail` subclass that inherits via
+  dataclass inheritance and adds the extra fields with defaults.
+  `parse_with_extra` works on either class because it derives the
+  known set from `dataclasses.fields()` (which includes inherited
+  fields).
+- **Delete operations** return `None`. The server's confirmation
+  payload (`{"id": ..., "type": "..._deleted"}`) is discarded;
+  success is signalled by no exception being raised. Errors raise
+  the usual `APIError` subclasses (`NotFoundError`, `ConflictError`,
+  …).
 
 ## Testing conventions
 

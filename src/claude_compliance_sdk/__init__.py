@@ -42,6 +42,8 @@ from claude_compliance_sdk.exceptions import (
 )
 from claude_compliance_sdk.resources.activities import Activity
 from claude_compliance_sdk.resources.organizations import Organization, User
+from claude_compliance_sdk.resources.project_documents import ProjectDocument
+from claude_compliance_sdk.resources.projects import Project, ProjectAttachment, ProjectDetail
 from claude_compliance_sdk.version import __version__
 
 __all__ = [
@@ -66,6 +68,10 @@ __all__ = [
     "OffsetPage",
     "Organization",
     "PermissionDeniedError",
+    "Project",
+    "ProjectAttachment",
+    "ProjectDetail",
+    "ProjectDocument",
     "RateLimitError",
     "User",
     "__version__",
