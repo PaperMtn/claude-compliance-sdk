@@ -92,6 +92,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pages), and `DELETE /v1/compliance/apps/chats/{chat_id}`
   (`.delete()` → `None`). `Chat`, `Message`, and `ChatMessagesPage`
   dataclasses are re-exported from `claude_compliance_sdk`.
+- Files trio — three resource groups sharing the same download
+  ergonomics:
+  - **Files / AsyncFiles** (user uploads, deletable). `.get()` →
+    `File` metadata; `.download()` → `bytes` bounded by
+    `max_download_bytes`; `.download_to_file(...)` streams to disk
+    unbounded; `.download_stream(...)` yields chunks to the caller;
+    `.delete()` → `None`.
+  - **GeneratedFiles / AsyncGeneratedFiles** (assistant tool-use
+    outputs in the per-conversation Filestore, **not deletable** —
+    no `DELETE` endpoint). Same `get` / `download` trio, no
+    `delete`.
+  - **Artifacts / AsyncArtifacts** (versioned text artifacts; **no
+    metadata endpoint, not deletable** per spec). Download trio
+    only — no `.get()`, no `.delete()`.
+- New `_internal/downloads.py` module holding the shared
+  `download_eager_*`, `download_to_file_*`, and `download_stream_*`
+  helpers so the three resource modules stay thin. Eager downloads
+  check `Content-Length` up-front and fall back to a streamed byte
+  tally when the header is absent.
+- New `FileTooLargeError` exception (subclass of
+  `ComplianceClientError`) raised when an eager `.download()` would
+  exceed `max_download_bytes`. Carries the configured `max_bytes`
+  cap and the reported `size_bytes` when the server supplied a
+  `Content-Length`. Re-exported from `claude_compliance_sdk`.
+- `File` and `GeneratedFile` dataclasses are re-exported.
 
 ### Changed
 

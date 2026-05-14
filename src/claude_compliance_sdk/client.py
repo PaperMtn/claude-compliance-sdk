@@ -103,10 +103,14 @@ class ComplianceClient:
         )
 
         self.activities: Activities = Activities(self._transport)
-        self.artifacts: Artifacts = Artifacts(self._transport)
+        self.artifacts: Artifacts = Artifacts(
+            self._transport, max_download_bytes=max_download_bytes
+        )
         self.chats: Chats = Chats(self._transport)
-        self.files: Files = Files(self._transport)
-        self.generated_files: GeneratedFiles = GeneratedFiles(self._transport)
+        self.files: Files = Files(self._transport, max_download_bytes=max_download_bytes)
+        self.generated_files: GeneratedFiles = GeneratedFiles(
+            self._transport, max_download_bytes=max_download_bytes
+        )
         self.groups: Groups = Groups(self._transport)
         self.organizations: Organizations = Organizations(self._transport)
         self.project_documents: ProjectDocuments = ProjectDocuments(self._transport)

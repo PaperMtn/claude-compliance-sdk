@@ -50,6 +50,7 @@ __all__ = [
     "BadRequestError",
     "ComplianceClientError",
     "ConflictError",
+    "FileTooLargeError",
     "InsufficientScopeError",
     "InternalServerError",
     "InvalidAPIKeyError",
@@ -273,6 +274,41 @@ class APIConnectionError(ComplianceClientError):
 
 class APITimeoutError(APIConnectionError):
     """The request exceeded the configured per-request timeout."""
+
+
+# ---------------------------------------------------------------------------
+# Download errors
+# ---------------------------------------------------------------------------
+
+
+class FileTooLargeError(ComplianceClientError):
+    """Eager download exceeded the configured ``max_download_bytes`` cap.
+
+    Raised by :meth:`Files.download`, :meth:`GeneratedFiles.download`,
+    and :meth:`Artifacts.download` when the response's
+    ``Content-Length`` (or the streamed byte total) exceeds the
+    client's ``max_download_bytes``. Use the streamed alternatives
+    (``download_to_file`` or ``download_stream``) when you genuinely
+    want to fetch something larger than the eager cap.
+
+    Attributes:
+        size_bytes: Reported file size in bytes, when the server
+            supplied a ``Content-Length`` we could compare against the
+            cap. ``None`` when the cap was tripped mid-stream because
+            no ``Content-Length`` was sent.
+        max_bytes: The configured ``max_download_bytes`` ceiling.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        size_bytes: int | None,
+        max_bytes: int,
+    ) -> None:
+        super().__init__(message)
+        self.size_bytes: int | None = size_bytes
+        self.max_bytes: int = max_bytes
 
 
 # ---------------------------------------------------------------------------

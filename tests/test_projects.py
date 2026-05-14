@@ -387,7 +387,33 @@ def test_iter_attachments_walks_pages(sync_client: ComplianceClient, httpx_mock:
 # ---------------------------------------------------------------------------
 
 
-async def test_async_list_and_iter(
+async def test_async_list_returns_offset_page(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PROJECTS_PATH}",
+        json={"data": [SPEC_EXAMPLE_PROJECT], "has_more": False, "next_page": None},
+    )
+    page = await async_client.projects.list()
+    assert page.data[0].id == "claude_proj_abc123"
+
+
+async def test_async_list_attachments(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=_attachments_url(),
+        json={
+            "data": [SPEC_EXAMPLE_FILE_ATTACHMENT],
+            "has_more": False,
+            "next_page": None,
+        },
+    )
+    page = await async_client.projects.list_attachments(PROJECT_ID)
+    assert page.data[0].type == "project_file"
+
+
+async def test_async_iter_walks_pages(
     async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
 ) -> None:
     httpx_mock.add_response(
