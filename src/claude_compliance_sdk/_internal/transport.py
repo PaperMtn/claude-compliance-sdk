@@ -39,10 +39,9 @@ def _build_user_agent() -> str:
     )
 
 
-def _build_default_headers(api_key: str, anthropic_version: str) -> dict[str, str]:
+def _build_default_headers(api_key: str) -> dict[str, str]:
     return {
         "x-api-key": api_key,
-        "anthropic-version": anthropic_version,
         "User-Agent": _build_user_agent(),
     }
 
@@ -82,8 +81,6 @@ class SyncTransport:
         api_key: Value sent in the ``x-api-key`` header.
         base_url: Base URL prepended to request paths.
         timeout: Per-request timeout, in seconds.
-        anthropic_version: Value sent in the ``anthropic-version``
-            header.
         max_retries: Maximum retries after the initial attempt. ``0``
             disables retries. Passed straight into the
             :class:`RetryPolicy`.
@@ -98,14 +95,13 @@ class SyncTransport:
         api_key: str,
         base_url: str,
         timeout: float,
-        anthropic_version: str,
         max_retries: int,
         rate_limit_rpm: int,
     ) -> None:
         self._client: httpx.Client = httpx.Client(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key, anthropic_version),
+            headers=_build_default_headers(api_key),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -210,14 +206,13 @@ class AsyncTransport:
         api_key: str,
         base_url: str,
         timeout: float,
-        anthropic_version: str,
         max_retries: int,
         rate_limit_rpm: int,
     ) -> None:
         self._client: httpx.AsyncClient = httpx.AsyncClient(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key, anthropic_version),
+            headers=_build_default_headers(api_key),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
