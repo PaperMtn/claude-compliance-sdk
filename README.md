@@ -1,28 +1,42 @@
 # claude-compliance-sdk
 
-A community Python SDK for the **Anthropic Compliance API** — the read
-side of Claude Enterprise that lets compliance teams export and audit
-user activity, chats, files, projects, organisations, roles, and
-groups.
+This is a community Python SDK for the **Anthropic Compliance API** — the API that lets you access Claude activity logs, chat data, and file content programmatically.
+
+The Compliance API requires an Enterprise plan, and primary owners can enable it using the guide [here](https://support.claude.com/en/articles/13015708-access-the-compliance-api).
 
 > **Unofficial.** This is a community-maintained project. It is not
 > produced, endorsed, or supported by Anthropic.
 
-- Hand-written, dependency-light (`httpx` only), `slack_sdk`-style
-  ergonomics.
-- Full sync + async parity — same method names on both clients.
-- Typed responses (plain dataclasses, no Pydantic). Unknown response
-  fields land in `extra: dict` so the SDK does not break when the spec
-  grows.
+## Features
+
+- Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, and Organisations.
+- Full sync + async parity. Every resource method is available on both `ComplianceClient` and `AsyncComplianceClient` under the same name.
+- Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future spec revision adding a field cannot break the SDK.
+- Built-in retry with exponential backoff that honours `Retry-After`, plus a client-side sliding-window rate limiter that matches the server's 600 RPM cap.
+- Streamed downloads with a configurable memory ceiling — switch from eager bytes to `download_to_file()` or `download_stream()` for anything larger.
+- Typed exception hierarchy. Every spec error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
 - Targets spec revision **Rev K** (2026-05-04).
+
+## Requirements
+Python 3.11+.
 
 ## Install
 
-```
+Install from PyPI with pip:
+```bash
 pip install claude-compliance-sdk
 ```
 
-Python 3.11+.
+Or install from source:
+```bash
+git clone https://github.com/PaperMtn/claude-compliance-sdk.git
+cd claude-compliance-sdk
+python -m pip install .
+```
+
+## Documentation
+
+Full API reference docs are available at [papermtn.github.io/claude-compliance-sdk](https://papermtn.github.io/claude-compliance-sdk/).
 
 ## Quickstart
 
@@ -62,19 +76,30 @@ done.
 
 ## Authentication
 
-The Compliance API uses two distinct key types. The SDK never inspects
-the prefix — the server is the source of truth; the client only labels
-the resulting `401`.
+The Compliance API uses **Compliance Access Keys** (prefix
+`sk-ant-api01-...`), created by your organisation's Primary Owner from
+Claude.ai under **Settings → Data Management → Compliance access keys**.
+At creation time the key is granted one or more of the following
+scopes; the scope set is fixed for the lifetime of the key:
 
-| Key prefix | Issued from | What it unlocks |
-| --- | --- | --- |
-| `sk-ant-api01-...` | Claude.ai → Compliance access keys | Chats, files, projects, organisations, roles, groups |
-| `sk-ant-admin01-...` | Claude Console → Admin keys | The Activity Feed only |
+| Scope | Unlocks |
+| --- | --- |
+| `read:compliance_activities` | Activity Feed (`activities`) |
+| `read:compliance_user_data` | Chats, messages, file metadata, project data, group members |
+| `delete:compliance_user_data` | Deleting chats and user-uploaded files |
+| `read:compliance_org_data` | Organisations, users, roles, permissions, groups |
 
-Pass the key explicitly:
+A request that the server rejects with `401`
+is surfaced as either `InvalidAPIKeyError` (the key is wrong) or
+`InsufficientScopeError` (the key is valid but missing the scope the
+endpoint needs).
+
+Pass the key when constructing the client:
 
 ```python
-client = ComplianceClient(api_key="sk-ant-api01-...")
+import os
+
+client = ComplianceClient(api_key=os.environ["ANTHROPIC_COMPLIANCE_API_KEY"])
 ```
 
 Or set the environment variable and let the client read it:
@@ -87,21 +112,17 @@ export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-api01-...
 client = ComplianceClient()
 ```
 
-If the key is missing in both places, the constructor raises
-`ValueError` immediately — no wasted network round-trip.
-
 ## Pagination
 
-Two flavours per the spec:
+Two types of pagination are used:
 
 - **Cursor-paginated** — Activity Feed, Chats, Messages. Pages carry
   `first_id` / `last_id` / `has_more`.
 - **Offset-paginated** — everything else. Pages carry `has_more` and
   an opaque `next_page` token.
 
-Every paginated resource exposes both `.list()` (one page at a time —
-fine-grained control) and `.iter()` (auto-paginate — yields items one
-at a time across however many pages it takes).
+Every paginated resource exposes both `.list()` (one page at a time) and `.iter()` (auto-paginate — yields items one
+at a time across all pages) functions.
 
 ```python
 # .list() — explicit page boundaries
@@ -116,61 +137,17 @@ for project in client.projects.iter(organization_ids=["org_abc123"]):
     print(project.id)
 ```
 
-Cursor resources are identical in shape; the page carries `last_id`
+Cursor resources are identical in shape; the page contains `last_id`
 and you pass it back as `after_id`.
-
-## Error handling
-
-Every error the SDK raises descends from
-[`ComplianceClientError`](src/claude_compliance_sdk/exceptions.py).
-The HTTP branch maps status codes to typed subclasses:
-
-```python
-from claude_compliance_sdk import (
-    ComplianceClient,
-    APIError,
-    InsufficientScopeError,
-    InvalidAPIKeyError,
-    RateLimitError,
-    ConflictError,
-    NotFoundError,
-)
-
-with ComplianceClient() as client:
-    try:
-        client.projects.delete("claude_proj_abc123")
-    except InvalidAPIKeyError:
-        print("Bad API key.")
-    except InsufficientScopeError as exc:
-        print("Missing scope:", exc.error_message)
-    except ConflictError:
-        print("Project still has chats attached.")
-    except RateLimitError as exc:
-        print(f"Rate limited; server says wait {exc.retry_after}s.")
-    except APIError as exc:
-        # Catch-all for any other HTTP failure.
-        print(exc.status_code, exc.error_type, exc.error_message)
-        print("request-id:", exc.request_id)
-```
-
-The 401 split (`InvalidAPIKeyError` / `InsufficientScopeError`) is a
-best-effort label based on the server's error message — see ADR-0001
-in `docs/adr/`. Transport-level failures live under
-`APIConnectionError` (and the more specific `APITimeoutError`).
-Eager downloads past the size cap raise `FileTooLargeError`.
-
-The transport retries 429 / 500 / 502 / 503 / 504 on safe methods with
-exponential backoff and honours `Retry-After`. Tune via `max_retries`
-on either client (set to `0` to disable).
 
 ## Downloads
 
 Three resource groups expose binary content — user files, assistant-
-generated files, and artifacts. Each provides the same trio of
+generated files, and artifacts. Each provides the same three download
 methods:
 
 ```python
-# Eager — into memory, bounded by max_download_bytes (default 100 MiB).
+# Into memory, bounded by max_download_bytes (default 100 MiB).
 data: bytes = client.files.download("claude_file_xyz789")
 
 # Streamed to disk — unbounded.
@@ -182,9 +159,8 @@ for chunk in client.files.download_stream("claude_file_xyz789"):
     handle(chunk)
 ```
 
-The `max_download_bytes` cap protects memory on the eager path only.
-`download_to_file` and `download_stream` are deliberately unbounded —
-use them for anything larger than the cap.
+The `max_download_bytes` cap protects memory on the memory path only.
+`download_to_file` and `download_stream` ignore the cap and always stream, so you can use them for anything larger than the cap.
 
 ```python
 client = ComplianceClient(max_download_bytes=10 * 1024 * 1024)  # 10 MiB cap
@@ -197,7 +173,7 @@ except FileTooLargeError as exc:
 ```
 
 User files are deletable (`.delete()`). Generated files and artifacts
-are not — the server rejects deletes on those.
+are not.
 
 ## Configuration
 
@@ -208,7 +184,6 @@ are not — the server rejects deletes on those.
 | `api_key` | env `ANTHROPIC_COMPLIANCE_API_KEY` | Bearer credential. |
 | `base_url` | `https://api.anthropic.com` | Override for testing. |
 | `timeout` | `30.0` | Per-request timeout, seconds. |
-| `anthropic_version` | `"2023-06-01"` | Value sent in the `anthropic-version` header. |
 | `max_download_bytes` | `100 * 1024 * 1024` | Eager-download cap. |
 | `max_retries` | `3` | Retry attempts on 429/5xx and connect errors. `0` disables. |
 | `rate_limit_rpm` | `600` | Client-side sliding-window cap matching the server. `0` disables. |
