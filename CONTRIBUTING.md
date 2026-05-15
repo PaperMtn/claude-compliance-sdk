@@ -154,6 +154,10 @@ Conventions:
   numbered ADR (`0001-some-decision.md`). Phase-0 decisions are summarised
   in **CONTEXT.md**; promote them to ADRs once they have a real follow-up
   discussion.
+- The API reference site is built with mkdocs-material and
+  mkdocstrings — `poetry run mkdocs serve` to preview locally; CI
+  builds in `--strict` mode so missing nav targets and unresolved
+  references fail the build.
 
 ## Pull request checklist
 

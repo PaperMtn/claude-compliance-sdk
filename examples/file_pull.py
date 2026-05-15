@@ -12,7 +12,7 @@ Requires a **Compliance Access Key** (``sk-ant-api01-...``).
 Usage::
 
     export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-api01-...
-    python docs/examples/file_pull.py \\
+    python examples/file_pull.py \\
         --project claude_proj_abc123 \\
         --out-dir ./files
 """
@@ -23,11 +23,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from claude_compliance_sdk import (
-    APIError,
-    ComplianceClient,
-    NotFoundError,
-)
+from claude_compliance_sdk import APIError, ComplianceClient, NotFoundError
 
 
 def parse_args() -> argparse.Namespace:

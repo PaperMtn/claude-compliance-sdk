@@ -10,7 +10,7 @@ Requires a **Compliance Access Key** (``sk-ant-api01-...``).
 Usage::
 
     export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-api01-...
-    python docs/examples/ediscovery_export.py \\
+    python examples/ediscovery_export.py \\
         --user user_abc123 --user user_def456 \\
         --since 2025-06-01T00:00:00Z \\
         --until 2025-06-30T23:59:59Z \\
@@ -25,13 +25,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from claude_compliance_sdk import (
-    APIError,
-    Chat,
-    ComplianceClient,
-    InsufficientScopeError,
-    Message,
-)
+from claude_compliance_sdk import APIError, Chat, ComplianceClient, InsufficientScopeError, Message
 
 
 def parse_args() -> argparse.Namespace:

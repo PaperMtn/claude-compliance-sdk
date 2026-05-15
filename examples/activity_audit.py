@@ -10,7 +10,7 @@ Feed is the only endpoint admin keys can call.
 Usage::
 
     export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-admin01-...
-    python docs/examples/activity_audit.py \\
+    python examples/activity_audit.py \\
         --since 2025-06-01T00:00:00Z \\
         --until 2025-06-30T23:59:59Z \\
         --type api_key_created \\
@@ -36,12 +36,8 @@ from claude_compliance_sdk import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "--since", required=True, help="Earliest created_at (RFC 3339)."
-    )
-    parser.add_argument(
-        "--until", required=True, help="Latest created_at (RFC 3339)."
-    )
+    parser.add_argument("--since", required=True, help="Earliest created_at (RFC 3339).")
+    parser.add_argument("--until", required=True, help="Latest created_at (RFC 3339).")
     parser.add_argument(
         "--actor",
         action="append",
