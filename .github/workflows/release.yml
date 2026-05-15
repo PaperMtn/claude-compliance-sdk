@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write   # for creating the GitHub release
+  id-token: write   # for PyPI Trusted Publisher (OIDC)
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: "1.8.3"
+
+      - name: Verify tag matches pyproject version
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME}"          # e.g. v0.1.0
+          tag_version="${tag#v}"             # 0.1.0
+          pyproject_version="$(poetry version --short)"
+          if [ "$tag_version" != "$pyproject_version" ]; then
+            echo "::error::Tag $tag does not match pyproject version $pyproject_version"
+            exit 1
+          fi
+          echo "version=$tag_version" >> "$GITHUB_OUTPUT"
+
+      - name: Build sdist + wheel
+        run: poetry build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/claude-compliance-sdk
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      # Trusted Publisher — no API token. Configure the PyPI project
+      # with: workflow_filename=release.yml, repo=PaperMtn/claude-compliance-sdk,
+      # environment=pypi. See https://docs.pypi.org/trusted-publishers/.
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: Draft GitHub release
+    needs: [build, publish-pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Extract CHANGELOG section for this version
+        id: notes
+        run: |
+          version="${{ needs.build.outputs.version }}"
+          # Pull everything between "## [<version>]" and the next "## ["
+          awk -v ver="$version" '
+            $0 ~ "^## \\[" ver "\\]" { capture = 1; next }
+            capture && /^## \[/ { exit }
+            capture { print }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::warning::No CHANGELOG section found for $version; using a stub."
+            echo "Release $version" > release-notes.md
+          fi
+          {
+            echo "notes<<EOF"
+            cat release-notes.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          draft: true
+          files: |
+            dist/*.tar.gz
+            dist/*.whl

@@ -135,6 +135,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for manually-created groups or ``"scim"`` for groups pushed by an
   IdP via directory sync.
 
+- API reference site (`mkdocs.yml` + `docs/`) built with
+  mkdocs-material + mkdocstrings. Renders the Google-style docstrings
+  per module. Run `poetry run mkdocs serve` locally; CI builds it in
+  strict mode.
+- Runnable example scripts under `examples/` —
+  `activity_audit.py`, `ediscovery_export.py`, and `file_pull.py` —
+  shipped as both API reference and tutorial material.
+- GitHub Actions workflow `.github/workflows/ci.yml`: pre-commit
+  lint job, test job matrixed across Python 3.11 / 3.12 / 3.13 with
+  coverage gate at 90%, mypy on the public package, docs strict
+  build.
+- GitHub Actions workflow `.github/workflows/release.yml`: triggered
+  on `v*.*.*` tags. Verifies the tag matches `pyproject.toml`,
+  builds the sdist + wheel with Poetry, publishes to PyPI via OIDC
+  Trusted Publishers, and creates a draft GitHub release populated
+  from the CHANGELOG section for that version.
+
 ### Removed
 
 - The SDK no longer sends the `anthropic-version` request header by

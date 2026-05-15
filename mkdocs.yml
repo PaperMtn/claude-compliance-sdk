@@ -1,0 +1,80 @@
+site_name: claude-compliance-sdk
+site_description: Community Python SDK for the Anthropic Compliance API.
+site_url: https://papermtn.github.io/claude-compliance-sdk/
+repo_url: https://github.com/PaperMtn/claude-compliance-sdk
+repo_name: PaperMtn/claude-compliance-sdk
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.share
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            docstring_style: google
+            members_order: source
+            heading_level: 2
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Clients: api/clients.md
+  - Resources:
+    - Activities: api/activities.md
+    - Organizations: api/organizations.md
+    - Projects: api/projects.md
+    - Project documents: api/project_documents.md
+    - Chats: api/chats.md
+    - Files: api/files.md
+    - Generated files: api/generated_files.md
+    - Artifacts: api/artifacts.md
+    - Roles: api/roles.md
+    - Groups: api/groups.md
+  - Pagination: api/pagination.md
+  - Errors: api/exceptions.md
+  - Examples: examples.md
+  - Architecture decisions:
+    - Template: adr/0000-template.md
+    - 0001 — Concrete transports without abstract bases: adr/0001-concrete-transports-without-abstract-bases.md
+    - 0002 — Response dataclass parsing via dataclasses.fields: adr/0002-response-dataclass-parsing-via-dataclasses-fields.md

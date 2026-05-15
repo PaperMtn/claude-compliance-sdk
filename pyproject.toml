@@ -44,6 +44,8 @@ isort = "^5.13"
 pylint = "^3.2"
 mypy = "^1.10"
 pre-commit = "^3.7"
+mkdocs-material = "^9.7.6"
+mkdocstrings = {extras = ["python"], version = "^1.0.4"}
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

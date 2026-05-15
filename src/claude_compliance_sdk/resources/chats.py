@@ -297,10 +297,14 @@ class Chats:
                 raises :class:`ValueError` locally before sending.
             organization_ids: Optional org filter.
             project_ids: Optional project filter.
-            created_at_gte/gt/lte/lt: RFC 3339 creation-time
-                comparators.
-            updated_at_gte/gt/lte/lt: RFC 3339 last-update
-                comparators.
+            created_at_gte: ``created_at >= value`` (RFC 3339).
+            created_at_gt: ``created_at > value`` (RFC 3339).
+            created_at_lte: ``created_at <= value`` (RFC 3339).
+            created_at_lt: ``created_at < value`` (RFC 3339).
+            updated_at_gte: ``updated_at >= value`` (RFC 3339).
+            updated_at_gt: ``updated_at > value`` (RFC 3339).
+            updated_at_lte: ``updated_at <= value`` (RFC 3339).
+            updated_at_lt: ``updated_at < value`` (RFC 3339).
             after_id: Cursor for forward pagination.
             before_id: Cursor for backward pagination. Mutually
                 exclusive with ``after_id``.
