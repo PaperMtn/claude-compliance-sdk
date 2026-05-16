@@ -4,7 +4,7 @@ Wraps ``GET /v1/compliance/apps/artifacts/{artifact_version_id}/content``
 for downloading versioned text artifacts (code, markdown, structured
 output) that Claude generates as part of assistant responses.
 
-Unlike :mod:`files` and :mod:`generated_files`, Artifacts has **no
+Unlike `files` and `generated_files`, Artifacts has **no
 metadata endpoint and no DELETE** — only the content download. The
 reference metadata (``id``, ``version_id``, ``title``,
 ``artifact_type``) is carried inline on chat messages, so the listing
@@ -43,9 +43,9 @@ class Artifacts:
     def download(self, artifact_version_id: str) -> bytes:
         """Eager download bounded by ``max_download_bytes``.
 
-        Raises :class:`~claude_compliance_sdk.FileTooLargeError` when
-        the content exceeds the cap. Use :meth:`download_to_file` or
-        :meth:`download_stream` for larger artifacts.
+        Raises `FileTooLargeError` when
+        the content exceeds the cap. Use `download_to_file` or
+        `download_stream` for larger artifacts.
         """
         return download_eager_sync(
             self._transport,
@@ -74,7 +74,7 @@ class AsyncArtifacts:
         self._max_download_bytes = max_download_bytes
 
     async def download(self, artifact_version_id: str) -> bytes:
-        """Async analogue of :meth:`Artifacts.download`."""
+        """Async analogue of `download`."""
         return await download_eager_async(
             self._transport,
             _content_path(artifact_version_id),
@@ -82,7 +82,7 @@ class AsyncArtifacts:
         )
 
     async def download_to_file(self, artifact_version_id: str, dest: PathLike) -> None:
-        """Async analogue of :meth:`Artifacts.download_to_file`."""
+        """Async analogue of `download_to_file`."""
         await download_to_file_async(
             self._transport,
             _content_path(artifact_version_id),
@@ -90,5 +90,5 @@ class AsyncArtifacts:
         )
 
     def download_stream(self, artifact_version_id: str) -> AsyncIterator[bytes]:
-        """Async analogue of :meth:`Artifacts.download_stream`."""
+        """Async analogue of `download_stream`."""
         return download_stream_async(self._transport, _content_path(artifact_version_id))

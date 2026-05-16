@@ -1,24 +1,24 @@
 """Exception hierarchy for the Anthropic Compliance SDK.
 
 All errors raised by ``claude_compliance_sdk`` derive from
-:class:`ComplianceClientError`. The tree separates HTTP failures
-(everything under :class:`APIError`) from transport-level failures
-(everything under :class:`APIConnectionError`) so callers can catch the
+`ComplianceClientError`. The tree separates HTTP failures
+(everything under `APIError`) from transport-level failures
+(everything under `APIConnectionError`) so callers can catch the
 two cases independently.
 
 The Compliance API returns errors in a single JSON shape::
 
     {"error": {"type": "...", "message": "..."}}
 
-Each :class:`APIError` instance carries the HTTP status code, the
+Each `APIError` instance carries the HTTP status code, the
 ``request-id`` response header, the server's ``error.type`` and
 ``error.message`` parsed from the body, and the raw decoded body. Use
-:meth:`APIError.from_response` from the transport layer to build the
+`from_response` from the transport layer to build the
 right subclass from an HTTP response.
 
 The 401 split is intentional. The server is the source of truth — the
-client only labels a 401 as :class:`InvalidAPIKeyError` or
-:class:`InsufficientScopeError` for ergonomics, by looking for ``scope``
+client only labels a 401 as `InvalidAPIKeyError` or
+`InsufficientScopeError` for ergonomics, by looking for ``scope``
 or ``permission`` in the error message.
 
 Example:
@@ -115,7 +115,7 @@ class APIError(ComplianceClientError):
         headers: Mapping[str, str] | None = None,
         body: Any = None,
     ) -> "APIError":
-        """Build the right :class:`APIError` subclass from a response.
+        """Build the right `APIError` subclass from a response.
 
         Routes by status code, parses ``error.type`` / ``error.message``
         out of the body when present, lifts ``request-id`` from headers,
@@ -132,10 +132,10 @@ class APIError(ComplianceClientError):
                 parsed fields stay ``None``.
 
         Returns:
-            An :class:`APIError` subclass instance matching the status
-            code. 401 is split between :class:`InvalidAPIKeyError` and
-            :class:`InsufficientScopeError`; 429 returns a
-            :class:`RateLimitError` with ``retry_after`` populated.
+            An `APIError` subclass instance matching the status
+            code. 401 is split between `InvalidAPIKeyError` and
+            `InsufficientScopeError`; 429 returns a
+            `RateLimitError` with ``retry_after`` populated.
         """
         headers = headers or {}
         request_id = _lookup_header(headers, "request-id") or _lookup_header(
@@ -189,8 +189,8 @@ class BadRequestError(APIError):
 class AuthenticationError(APIError):
     """HTTP 401 — base class for authentication failures.
 
-    The SDK refines a 401 into :class:`InvalidAPIKeyError` or
-    :class:`InsufficientScopeError` by inspecting ``error.message``.
+    The SDK refines a 401 into `InvalidAPIKeyError` or
+    `InsufficientScopeError` by inspecting ``error.message``.
     Catch this class to handle either case uniformly.
     """
 
@@ -284,8 +284,8 @@ class APITimeoutError(APIConnectionError):
 class FileTooLargeError(ComplianceClientError):
     """Eager download exceeded the configured ``max_download_bytes`` cap.
 
-    Raised by :meth:`Files.download`, :meth:`GeneratedFiles.download`,
-    and :meth:`Artifacts.download` when the response's
+    Raised by `download`, `download`,
+    and `download` when the response's
     ``Content-Length`` (or the streamed byte total) exceeds the
     client's ``max_download_bytes``. Use the streamed alternatives
     (``download_to_file`` or ``download_stream``) when you genuinely

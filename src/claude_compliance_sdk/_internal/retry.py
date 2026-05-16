@@ -3,21 +3,21 @@
 Pure-data class. Decides *whether* a response or transport exception is
 retryable and *how long* the caller should sleep before the next
 attempt. The sleep itself is the caller's responsibility — sync
-:meth:`SyncTransport.request` uses :func:`time.sleep`, async uses
-:func:`asyncio.sleep` — so the same policy serves both transports.
+`request` uses `sleep`, async uses
+`sleep` — so the same policy serves both transports.
 
-Retry semantics follow PLAN §2.3:
+Retry semantics:
 
 * Retry on HTTP 429, 500, 502, 503, 504.
-* Retry on :class:`httpx.ConnectError` for any method (the request
+* Retry on `ConnectError` for any method (the request
   never reached the server).
-* Retry on :class:`httpx.ReadTimeout` only for safe methods; for
+* Retry on `ReadTimeout` only for safe methods; for
   POST/PUT/PATCH the request may have been applied server-side, so a
   blind retry could double-write.
 * Backoff is ``base_delay * 2**retry_index`` capped at ``cap_delay``,
   with symmetric ``±jitter_ratio`` jitter added.
 * On 429 the ``Retry-After`` header (already parsed onto
-  :class:`~claude_compliance_sdk.RateLimitError`) overrides the
+  `RateLimitError`) overrides the
   backoff schedule.
 """
 

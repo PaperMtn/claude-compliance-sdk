@@ -9,7 +9,7 @@ instructions, reference material attached to a project):
   hard-delete a document.
 
 The list-of-documents view lives on the parent project — call
-:meth:`~claude_compliance_sdk.resources.projects.Projects.list_attachments`
+`list_attachments`
 and filter by ``type == "project_doc"``. The discriminator returns
 both binary files (``project_file``) and documents (``project_doc``)
 because the spec models them on the same listing endpoint.
@@ -50,7 +50,7 @@ class ProjectDocument:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "ProjectDocument":
-        """Build a :class:`ProjectDocument` from one decoded record."""
+        """Build a `ProjectDocument` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -99,10 +99,10 @@ class AsyncProjectDocuments:
         self._transport = transport
 
     async def get(self, document_id: str) -> ProjectDocument:
-        """Async analogue of :meth:`ProjectDocuments.get`."""
+        """Async analogue of `get`."""
         body = await self._transport.request("GET", _document_path(document_id))
         return ProjectDocument.from_dict(body)
 
     async def delete(self, document_id: str) -> None:
-        """Async analogue of :meth:`ProjectDocuments.delete`."""
+        """Async analogue of `delete`."""
         await self._transport.request("DELETE", _document_path(document_id))

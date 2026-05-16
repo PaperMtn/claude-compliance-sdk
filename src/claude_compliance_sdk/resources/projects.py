@@ -3,19 +3,19 @@
 Wraps four endpoints under ``/v1/compliance/apps/projects``:
 
 * ``GET /v1/compliance/apps/projects`` — offset-paginated project list.
-  Exposed via :meth:`Projects.list` (one page) and
-  :meth:`Projects.iter` (auto-paginate).
+  Exposed via `list` (one page) and
+  `iter` (auto-paginate).
 * ``GET /v1/compliance/apps/projects/{project_id}`` — single fetch
-  returning the richer :class:`ProjectDetail` shape.
+  returning the richer `ProjectDetail` shape.
 * ``DELETE /v1/compliance/apps/projects/{project_id}`` — hard delete.
-  Returns 409 / :class:`~claude_compliance_sdk.ConflictError` when the
+  Returns 409 / `ConflictError` when the
   project still has chats attached. The SDK does not pre-check; the
   server is the source of truth.
 * ``GET /v1/compliance/apps/projects/{project_id}/attachments`` —
   offset-paginated list of files and documents attached to a project.
 
 Project document content lives on a sibling resource group,
-:class:`~claude_compliance_sdk.resources.project_documents.ProjectDocuments`.
+`ProjectDocuments`.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ PROJECTS_PATH = "/v1/compliance/apps/projects"
 class Project:
     """A single Compliance API project (list-shape).
 
-    Use :meth:`Projects.get` to fetch the richer :class:`ProjectDetail`.
+    Use `get` to fetch the richer `ProjectDetail`.
 
     Attributes:
         id: Tagged project identifier (``claude_proj_...``).
@@ -76,15 +76,15 @@ class Project:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Project":
-        """Build a :class:`Project` from one decoded record."""
+        """Build a `Project` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
 @dataclass
 class ProjectDetail(Project):
-    """Detail view of a project, returned by :meth:`Projects.get`.
+    """Detail view of a project, returned by `get`.
 
-    Inherits every :class:`Project` field and adds four counts /
+    Inherits every `Project` field and adds four counts /
     text fields that the list endpoint omits.
 
     Attributes:
@@ -101,7 +101,7 @@ class ProjectDetail(Project):
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "ProjectDetail":
-        """Build a :class:`ProjectDetail` from one decoded record."""
+        """Build a `ProjectDetail` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -109,13 +109,13 @@ class ProjectDetail(Project):
 class ProjectAttachment:
     """An attachment on a project — either a binary file or a doc.
 
-    Discriminate on :attr:`type`:
+    Discriminate on `type`:
 
     * ``"project_file"`` — binary file. Download via the Files resource
-      (Phase 3.5) using :attr:`id` as ``claude_file_id``.
+      (Phase 3.5) using `id` as ``claude_file_id``.
     * ``"project_doc"`` — plain-text document. Fetch contents via
-      :meth:`~claude_compliance_sdk.resources.project_documents.ProjectDocuments.get`
-      using :attr:`id` as the document ID.
+      `get`
+      using `id` as the document ID.
 
     Attributes:
         type: Discriminator string. ``"project_file"`` or
@@ -138,7 +138,7 @@ class ProjectAttachment:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "ProjectAttachment":
-        """Build a :class:`ProjectAttachment` from one decoded record."""
+        """Build a `ProjectAttachment` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -261,7 +261,7 @@ class Projects:
     ) -> Iterator[Project]:
         """Iterate every matching project, auto-paginating.
 
-        Same filters as :meth:`list` except that ``page`` is managed
+        Same filters as `list` except that ``page`` is managed
         by the iterator.
         """
         return iter_all_offset_sync(
@@ -283,9 +283,9 @@ class Projects:
     def get(self, project_id: str) -> ProjectDetail:
         """Fetch the detail view of one project.
 
-        Returns the richer :class:`ProjectDetail` (description,
+        Returns the richer `ProjectDetail` (description,
         instructions, chats_count, attachments_count) in addition to
-        every :class:`Project` field.
+        every `Project` field.
 
         Raises:
             NotFoundError: When ``project_id`` does not exist.
@@ -298,7 +298,7 @@ class Projects:
         """Hard-delete a project and all its associated data.
 
         Per spec, the project must have **no attached chats** — the
-        server returns 409 / :class:`~claude_compliance_sdk.ConflictError`
+        server returns 409 / `ConflictError`
         otherwise. Detach or delete the chats first.
 
         Returns ``None`` on success; the server's confirmation payload
@@ -359,7 +359,7 @@ class AsyncProjects:
         page: str | None = None,
         limit: int | None = None,
     ) -> OffsetPage[Project]:
-        """Async analogue of :meth:`Projects.list`."""
+        """Async analogue of `list`."""
         body = await self._transport.request(
             "GET",
             PROJECTS_PATH,
@@ -387,7 +387,7 @@ class AsyncProjects:
         created_at_lt: str | None = None,
         limit: int | None = None,
     ) -> AsyncIterator[Project]:
-        """Async analogue of :meth:`Projects.iter`."""
+        """Async analogue of `iter`."""
         return iter_all_offset_async(
             self._transport,
             PROJECTS_PATH,
@@ -405,12 +405,12 @@ class AsyncProjects:
         )
 
     async def get(self, project_id: str) -> ProjectDetail:
-        """Async analogue of :meth:`Projects.get`."""
+        """Async analogue of `get`."""
         body = await self._transport.request("GET", _project_path(project_id))
         return ProjectDetail.from_dict(body)
 
     async def delete(self, project_id: str) -> None:
-        """Async analogue of :meth:`Projects.delete`."""
+        """Async analogue of `delete`."""
         await self._transport.request("DELETE", _project_path(project_id))
 
     async def list_attachments(
@@ -420,7 +420,7 @@ class AsyncProjects:
         limit: int | None = None,
         page: str | None = None,
     ) -> OffsetPage[ProjectAttachment]:
-        """Async analogue of :meth:`Projects.list_attachments`."""
+        """Async analogue of `list_attachments`."""
         body = await self._transport.request(
             "GET",
             _attachments_path(project_id),
@@ -434,7 +434,7 @@ class AsyncProjects:
         *,
         limit: int | None = None,
     ) -> AsyncIterator[ProjectAttachment]:
-        """Async analogue of :meth:`Projects.iter_attachments`."""
+        """Async analogue of `iter_attachments`."""
         return iter_all_offset_async(
             self._transport,
             _attachments_path(project_id),

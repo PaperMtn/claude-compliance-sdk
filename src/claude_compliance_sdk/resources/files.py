@@ -5,8 +5,8 @@ endpoints for metadata, download, and deletion of files a user
 attached to a chat.
 
 Three resources in Phase 3.5 share the same download trio
-(:meth:`download` / :meth:`download_to_file` / :meth:`download_stream`)
-backed by helpers in :mod:`claude_compliance_sdk._internal.downloads`.
+(`download` / `download_to_file` / `download_stream`)
+backed by helpers in `downloads`.
 Of the three, only user-uploaded files are deletable per spec —
 generated files and artifacts have no DELETE endpoint.
 """
@@ -61,7 +61,7 @@ class File:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "File":
-        """Build a :class:`File` from one decoded record."""
+        """Build a `File` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -89,8 +89,8 @@ class Files:
         """Download the file's bytes in one shot.
 
         Bounded by the client's ``max_download_bytes`` cap; raises
-        :class:`~claude_compliance_sdk.FileTooLargeError` for anything
-        larger. Use :meth:`download_to_file` or :meth:`download_stream`
+        `FileTooLargeError` for anything
+        larger. Use `download_to_file` or `download_stream`
         for unbounded reads.
         """
         return download_eager_sync(
@@ -136,12 +136,12 @@ class AsyncFiles:
         self._max_download_bytes = max_download_bytes
 
     async def get(self, claude_file_id: str) -> File:
-        """Async analogue of :meth:`Files.get`."""
+        """Async analogue of `get`."""
         body = await self._transport.request("GET", _file_path(claude_file_id))
         return File.from_dict(body)
 
     async def download(self, claude_file_id: str) -> bytes:
-        """Async analogue of :meth:`Files.download`."""
+        """Async analogue of `download`."""
         return await download_eager_async(
             self._transport,
             _content_path(claude_file_id),
@@ -149,7 +149,7 @@ class AsyncFiles:
         )
 
     async def download_to_file(self, claude_file_id: str, dest: PathLike) -> None:
-        """Async analogue of :meth:`Files.download_to_file`."""
+        """Async analogue of `download_to_file`."""
         await download_to_file_async(
             self._transport,
             _content_path(claude_file_id),
@@ -157,9 +157,9 @@ class AsyncFiles:
         )
 
     def download_stream(self, claude_file_id: str) -> AsyncIterator[bytes]:
-        """Async analogue of :meth:`Files.download_stream`."""
+        """Async analogue of `download_stream`."""
         return download_stream_async(self._transport, _content_path(claude_file_id))
 
     async def delete(self, claude_file_id: str) -> None:
-        """Async analogue of :meth:`Files.delete`."""
+        """Async analogue of `delete`."""
         await self._transport.request("DELETE", _file_path(claude_file_id))

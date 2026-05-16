@@ -11,7 +11,7 @@ Wraps the org-scoped Roles endpoints:
 
 Every method takes ``org_uuid`` because the endpoints live under the
 organisation path. Enumerate organisations via
-:meth:`~claude_compliance_sdk.resources.organizations.Organizations.list`
+`list`
 to obtain UUIDs.
 """
 
@@ -56,7 +56,7 @@ class Role:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Role":
-        """Build a :class:`Role` from one decoded record."""
+        """Build a `Role` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -84,7 +84,7 @@ class Permission:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Permission":
-        """Build a :class:`Permission` from one decoded record."""
+        """Build a `Permission` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -200,7 +200,7 @@ class AsyncRoles:
         limit: int | None = None,
         page: str | None = None,
     ) -> OffsetPage[Role]:
-        """Async analogue of :meth:`Roles.list`."""
+        """Async analogue of `list`."""
         body = await self._transport.request(
             "GET",
             _roles_path(org_uuid),
@@ -214,7 +214,7 @@ class AsyncRoles:
         *,
         limit: int | None = None,
     ) -> AsyncIterator[Role]:
-        """Async analogue of :meth:`Roles.iter`."""
+        """Async analogue of `iter`."""
         return iter_all_offset_async(
             self._transport,
             _roles_path(org_uuid),
@@ -223,7 +223,7 @@ class AsyncRoles:
         )
 
     async def get(self, org_uuid: str, role_id: str) -> Role:
-        """Async analogue of :meth:`Roles.get`."""
+        """Async analogue of `get`."""
         body = await self._transport.request("GET", _role_path(org_uuid, role_id))
         return Role.from_dict(body)
 
@@ -235,7 +235,7 @@ class AsyncRoles:
         limit: int | None = None,
         page: str | None = None,
     ) -> OffsetPage[Permission]:
-        """Async analogue of :meth:`Roles.list_permissions`."""
+        """Async analogue of `list_permissions`."""
         body = await self._transport.request(
             "GET",
             _permissions_path(org_uuid, role_id),
@@ -250,7 +250,7 @@ class AsyncRoles:
         *,
         limit: int | None = None,
     ) -> AsyncIterator[Permission]:
-        """Async analogue of :meth:`Roles.iter_permissions`."""
+        """Async analogue of `iter_permissions`."""
         return iter_all_offset_async(
             self._transport,
             _permissions_path(org_uuid, role_id),

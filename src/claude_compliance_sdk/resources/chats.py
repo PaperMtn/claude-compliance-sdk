@@ -5,27 +5,27 @@ Wraps three Compliance API endpoints:
 * ``GET /v1/compliance/apps/chats`` — cursor-paginated chat metadata
   list. ``user_ids[]`` is **required** and must carry 1–10 IDs; the
   SDK validates the length client-side (cheap input-shape check, per
-  CONTEXT.md decision 14) and raises :class:`ValueError` outside that
+  CONTEXT.md decision 14) and raises `ValueError` outside that
   range without touching the network.
 * ``GET /v1/compliance/apps/chats/{claude_chat_id}/messages`` — the
   only way to fetch a single chat. Returns the chat metadata
   alongside one cursor-paginated page of messages. Exposed via two
   methods:
 
-  * :meth:`Chats.get` returns a :class:`ChatMessagesPage` carrying
+  * `get` returns a `ChatMessagesPage` carrying
     both the chat and the message page so callers can read either.
-  * :meth:`Chats.iter_messages` drives the same endpoint with a
-    custom cursor loop and yields :class:`Message` objects one at a
+  * `iter_messages` drives the same endpoint with a
+    custom cursor loop and yields `Message` objects one at a
     time.
 
 * ``DELETE /v1/compliance/apps/chats/{claude_chat_id}`` — destructive
   delete. The chat record persists with ``deleted_at`` populated
   (soft-delete data model) but cannot be undone. Returns ``None``.
 
-PLAN.md described an additional ``GET /v1/compliance/apps/chats/{id}``
-single-fetch endpoint; the spec (Rev K) does not expose one, so
-:meth:`Chats.get` uses the messages endpoint and reads chat fields
-from its response.
+Note that the spec (Rev K) does not expose a separate
+``GET /v1/compliance/apps/chats/{id}`` single-fetch endpoint, so
+`get` uses the messages endpoint and reads the chat fields from
+its response.
 """
 
 from __future__ import annotations
@@ -94,10 +94,10 @@ class Chat:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Chat":
-        """Build a :class:`Chat` from one decoded record.
+        """Build a `Chat` from one decoded record.
 
         Strips the message-page wrapper keys before delegating to
-        :func:`parse_with_extra` so the chat's :attr:`extra` does not
+        `parse_with_extra` so the chat's `extra` does not
         carry pagination cruft when the body comes from the
         ``/messages`` endpoint.
         """
@@ -136,24 +136,24 @@ class Message:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Message":
-        """Build a :class:`Message` from one decoded record."""
+        """Build a `Message` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
 @dataclass
 class ChatMessagesPage:
-    """Result of :meth:`Chats.get` — chat metadata plus one page of messages.
+    """Result of `get` — chat metadata plus one page of messages.
 
     The Compliance API returns these together from a single endpoint,
     so this wrapper makes the join explicit on the SDK side rather
-    than scattering pagination fields across :class:`Chat`.
+    than scattering pagination fields across `Chat`.
 
     Attributes:
         chat: The chat's metadata.
-        messages: One :class:`CursorPage` of :class:`Message` for the
+        messages: One `CursorPage` of `Message` for the
             chat. Drive further pages by passing
             ``messages.last_id`` as ``after_id`` to the next
-            :meth:`Chats.get` call.
+            `get` call.
     """
 
     chat: Chat
@@ -161,7 +161,7 @@ class ChatMessagesPage:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "ChatMessagesPage":
-        """Build a :class:`ChatMessagesPage` from the ``/messages`` response."""
+        """Build a `ChatMessagesPage` from the ``/messages`` response."""
         chat = Chat.from_dict(body)
         messages_body = {
             "data": body.get("chat_messages") or [],
@@ -294,7 +294,7 @@ class Chats:
         Args:
             user_ids: **Required.** 1–10 user IDs to filter on. The
                 spec rejects requests outside this range; the SDK
-                raises :class:`ValueError` locally before sending.
+                raises `ValueError` locally before sending.
             organization_ids: Optional org filter.
             project_ids: Optional project filter.
             created_at_gte: ``created_at >= value`` (RFC 3339).
@@ -354,7 +354,7 @@ class Chats:
     ) -> Iterator[Chat]:
         """Iterate every matching chat, auto-paginating.
 
-        Same filters as :meth:`list` except that ``after_id`` /
+        Same filters as `list` except that ``after_id`` /
         ``before_id`` are managed by the iterator.
 
         Raises:
@@ -395,7 +395,7 @@ class Chats:
 
         The Compliance API returns chat metadata and a message page
         from a single endpoint; the SDK exposes them together via
-        :class:`ChatMessagesPage`.
+        `ChatMessagesPage`.
 
         Args:
             chat_id: Tagged chat identifier (``claude_chat_...``).
@@ -466,7 +466,7 @@ class AsyncChats:
         before_id: str | None = None,
         limit: int | None = None,
     ) -> CursorPage[Chat]:
-        """Async analogue of :meth:`Chats.list`."""
+        """Async analogue of `list`."""
         _validate_user_ids(user_ids)
         body = await self._transport.request(
             "GET",
@@ -506,7 +506,7 @@ class AsyncChats:
         updated_at_lt: str | None = None,
         limit: int | None = None,
     ) -> AsyncIterator[Chat]:
-        """Async analogue of :meth:`Chats.iter`."""
+        """Async analogue of `iter`."""
         _validate_user_ids(user_ids)
         after_id: str | None = None
         while True:
@@ -539,7 +539,7 @@ class AsyncChats:
         before_id: str | None = None,
         limit: int | None = None,
     ) -> ChatMessagesPage:
-        """Async analogue of :meth:`Chats.get`."""
+        """Async analogue of `get`."""
         body = await self._transport.request(
             "GET",
             _messages_path(chat_id),
@@ -553,7 +553,7 @@ class AsyncChats:
         *,
         limit: int | None = None,
     ) -> AsyncIterator[Message]:
-        """Async analogue of :meth:`Chats.iter_messages`."""
+        """Async analogue of `iter_messages`."""
         after_id: str | None = None
         while True:
             result = await self.get(chat_id, after_id=after_id, limit=limit)
@@ -564,5 +564,5 @@ class AsyncChats:
             after_id = result.messages.last_id
 
     async def delete(self, chat_id: str) -> None:
-        """Async analogue of :meth:`Chats.delete`."""
+        """Async analogue of `delete`."""
         await self._transport.request("DELETE", _chat_path(chat_id))

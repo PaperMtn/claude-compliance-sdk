@@ -1,6 +1,6 @@
 """Asynchronous entry point for the Anthropic Compliance SDK.
 
-Mirrors :mod:`claude_compliance_sdk.client` exactly, but every method
+Mirrors `client` exactly, but every method
 that performs I/O is a coroutine. The construction surface, defaults,
 and resource group attributes are otherwise identical so callers can
 swap one client for the other without changing call sites.

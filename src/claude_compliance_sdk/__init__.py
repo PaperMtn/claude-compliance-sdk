@@ -2,12 +2,12 @@
 
 Public surface:
 
-* :class:`ComplianceClient` — synchronous client.
-* :class:`AsyncComplianceClient` — asynchronous client.
-* The error hierarchy rooted at :class:`ComplianceClientError`.
-* Pagination page shapes (:class:`CursorPage`, :class:`OffsetPage`,
+* `ComplianceClient` — synchronous client.
+* `AsyncComplianceClient` — asynchronous client.
+* The error hierarchy rooted at `ComplianceClientError`.
+* Pagination page shapes (`CursorPage`, `OffsetPage`,
   and their async aliases).
-* :data:`__version__` — current SDK version.
+* `__version__` — current SDK version.
 
 The two clients expose the same resource group attributes
 (``activities``, ``chats``, ``files``, ``generated_files``, ``artifacts``,

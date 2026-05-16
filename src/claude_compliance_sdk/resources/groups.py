@@ -7,9 +7,9 @@ Wraps three Groups endpoints:
 * ``GET /v1/compliance/groups/{group_id}/members`` —
   offset-paginated list of users in the group.
 
-Unlike :mod:`roles`, groups are not addressed under an organisation
+Unlike `roles`, groups are not addressed under an organisation
 path — they're top-level. The roles each group grants travel inline
-on :attr:`Group.roles` as a list of role IDs.
+on `roles` as a list of role IDs.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class Group:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Group":
-        """Build a :class:`Group` from one decoded record."""
+        """Build a `Group` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -85,7 +85,7 @@ class GroupMember:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "GroupMember":
-        """Build a :class:`GroupMember` from one decoded record."""
+        """Build a `GroupMember` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -191,7 +191,7 @@ class AsyncGroups:
         limit: int | None = None,
         page: str | None = None,
     ) -> OffsetPage[Group]:
-        """Async analogue of :meth:`Groups.list`."""
+        """Async analogue of `list`."""
         body = await self._transport.request(
             "GET",
             GROUPS_PATH,
@@ -204,7 +204,7 @@ class AsyncGroups:
         *,
         limit: int | None = None,
     ) -> AsyncIterator[Group]:
-        """Async analogue of :meth:`Groups.iter`."""
+        """Async analogue of `iter`."""
         return iter_all_offset_async(
             self._transport,
             GROUPS_PATH,
@@ -213,7 +213,7 @@ class AsyncGroups:
         )
 
     async def get(self, group_id: str) -> Group:
-        """Async analogue of :meth:`Groups.get`."""
+        """Async analogue of `get`."""
         body = await self._transport.request("GET", _group_path(group_id))
         return Group.from_dict(body)
 
@@ -224,7 +224,7 @@ class AsyncGroups:
         limit: int | None = None,
         page: str | None = None,
     ) -> OffsetPage[GroupMember]:
-        """Async analogue of :meth:`Groups.list_members`."""
+        """Async analogue of `list_members`."""
         body = await self._transport.request(
             "GET",
             _members_path(group_id),
@@ -238,7 +238,7 @@ class AsyncGroups:
         *,
         limit: int | None = None,
     ) -> AsyncIterator[GroupMember]:
-        """Async analogue of :meth:`Groups.iter_members`."""
+        """Async analogue of `iter_members`."""
         return iter_all_offset_async(
             self._transport,
             _members_path(group_id),

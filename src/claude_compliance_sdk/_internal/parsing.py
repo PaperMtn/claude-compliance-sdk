@@ -9,7 +9,7 @@ between known and unknown keys is a *property of the dataclass* — it
 should be derived from the field set, not maintained by hand in a
 parallel frozenset.
 
-:func:`parse_with_extra` walks ``dataclasses.fields(cls)`` to discover
+`parse_with_extra` walks ``dataclasses.fields(cls)`` to discover
 the known names, copies matching body values to constructor kwargs, and
 dumps everything else into ``extra``. Resource dataclasses keep a
 one-line ``from_dict`` that delegates to this helper.
@@ -31,7 +31,7 @@ def parse_with_extra(cls: type[T], body: Mapping[str, Any]) -> T:
     copied into it verbatim. Body keys that *are* known are passed
     through to the constructor; missing optional fields fall back to
     the dataclass's default, missing required fields raise the usual
-    :class:`TypeError` from the dataclass ``__init__``.
+    `TypeError` from the dataclass ``__init__``.
 
     Args:
         cls: The dataclass type to instantiate.

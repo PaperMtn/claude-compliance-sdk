@@ -9,7 +9,7 @@ Three pairs of helpers are exposed (one sync, one async each):
 
 * ``download_eager_*`` — read the response in full into memory,
   bounded by ``max_download_bytes``. Raises
-  :class:`~claude_compliance_sdk.FileTooLargeError` if the body's
+  `FileTooLargeError` if the body's
   ``Content-Length`` (or the streamed byte total when the header is
   absent) exceeds the cap.
 * ``download_to_file_*`` — stream the response to a local path.
@@ -20,7 +20,7 @@ Three pairs of helpers are exposed (one sync, one async each):
 All helpers issue ``transport.request("GET", path, stream=True)`` so
 the response body is left undrained until the helper itself iterates.
 Errors from the server (non-2xx) raise their usual
-:class:`~claude_compliance_sdk.APIError` subclass inside
+`APIError` subclass inside
 ``request()`` — the helpers never see an error response.
 """
 
@@ -97,7 +97,7 @@ async def download_eager_async(
     *,
     max_download_bytes: int,
 ) -> bytes:
-    """Async analogue of :func:`download_eager_sync`."""
+    """Async analogue of `download_eager_sync`."""
     response = await transport.request("GET", path, stream=True)
     try:
         _enforce_content_length(response, max_download_bytes)
@@ -112,7 +112,7 @@ async def download_to_file_async(
     *,
     dest: PathLike,
 ) -> None:
-    """Async analogue of :func:`download_to_file_sync`."""
+    """Async analogue of `download_to_file_sync`."""
     response = await transport.request("GET", path, stream=True)
     try:
         with open(dest, "wb") as handle:
@@ -126,7 +126,7 @@ async def download_stream_async(
     transport: AsyncTransport,
     path: str,
 ) -> AsyncIterator[bytes]:
-    """Async analogue of :func:`download_stream_sync`."""
+    """Async analogue of `download_stream_sync`."""
     response = await transport.request("GET", path, stream=True)
     try:
         async for chunk in response.aiter_bytes():

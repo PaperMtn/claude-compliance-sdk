@@ -46,7 +46,7 @@ class Activity:
     """A single audit event from the Compliance API activity feed.
 
     Per-type fields (for example ``claude_chat_id`` on a
-    ``claude_chat_created`` activity) land in :attr:`extra` rather than
+    ``claude_chat_created`` activity) land in `extra` rather than
     on the dataclass so the SDK does not have to track the full list
     of activity types — that set grows over time and stays in the spec.
 
@@ -80,7 +80,7 @@ class Activity:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Activity":
-        """Build an :class:`Activity` from one decoded JSON record."""
+        """Build an `Activity` from one decoded JSON record."""
         return parse_with_extra(cls, body)
 
 
@@ -165,7 +165,7 @@ class Activities:
             limit: Maximum results, default 100, max 5000.
 
         Returns:
-            One :class:`CursorPage` of :class:`Activity` objects.
+            One `CursorPage` of `Activity` objects.
 
         Raises:
             InsufficientScopeError: When the API key lacks
@@ -201,7 +201,7 @@ class Activities:
     ) -> Iterator[Activity]:
         """Iterate every matching activity, auto-paginating.
 
-        Same filters as :meth:`list` except that ``after_id`` /
+        Same filters as `list` except that ``after_id`` /
         ``before_id`` are managed by the iterator and therefore not
         accepted here.
         """
@@ -242,7 +242,7 @@ class AsyncActivities:
         before_id: str | None = None,
         limit: int | None = None,
     ) -> CursorPage[Activity]:
-        """Async analogue of :meth:`Activities.list`."""
+        """Async analogue of `list`."""
         params = _build_query_params(
             organization_ids=organization_ids,
             actor_ids=actor_ids,
@@ -270,7 +270,7 @@ class AsyncActivities:
         created_at_lt: str | None = None,
         limit: int | None = None,
     ) -> AsyncIterator[Activity]:
-        """Async analogue of :meth:`Activities.iter`."""
+        """Async analogue of `iter`."""
         params = _build_query_params(
             organization_ids=organization_ids,
             actor_ids=actor_ids,

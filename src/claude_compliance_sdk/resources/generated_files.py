@@ -60,7 +60,7 @@ class GeneratedFile:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "GeneratedFile":
-        """Build a :class:`GeneratedFile` from one decoded record."""
+        """Build a `GeneratedFile` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -113,12 +113,12 @@ class AsyncGeneratedFiles:
         self._max_download_bytes = max_download_bytes
 
     async def get(self, claude_gen_file_id: str) -> GeneratedFile:
-        """Async analogue of :meth:`GeneratedFiles.get`."""
+        """Async analogue of `get`."""
         body = await self._transport.request("GET", _file_path(claude_gen_file_id))
         return GeneratedFile.from_dict(body)
 
     async def download(self, claude_gen_file_id: str) -> bytes:
-        """Async analogue of :meth:`GeneratedFiles.download`."""
+        """Async analogue of `download`."""
         return await download_eager_async(
             self._transport,
             _content_path(claude_gen_file_id),
@@ -126,7 +126,7 @@ class AsyncGeneratedFiles:
         )
 
     async def download_to_file(self, claude_gen_file_id: str, dest: PathLike) -> None:
-        """Async analogue of :meth:`GeneratedFiles.download_to_file`."""
+        """Async analogue of `download_to_file`."""
         await download_to_file_async(
             self._transport,
             _content_path(claude_gen_file_id),
@@ -134,5 +134,5 @@ class AsyncGeneratedFiles:
         )
 
     def download_stream(self, claude_gen_file_id: str) -> AsyncIterator[bytes]:
-        """Async analogue of :meth:`GeneratedFiles.download_stream`."""
+        """Async analogue of `download_stream`."""
         return download_stream_async(self._transport, _content_path(claude_gen_file_id))

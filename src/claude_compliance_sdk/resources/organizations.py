@@ -6,13 +6,13 @@ Wraps two Compliance API endpoints:
   the parent organisation. **Unpaginated**: the server returns the
   whole list in one shot, and errors with HTTP 500 when the result
   would exceed 1,000 organisations. The SDK surfaces that error
-  untouched as :class:`~claude_compliance_sdk.InternalServerError`
+  untouched as `InternalServerError`
   rather than paginating around it client-side — server is the source
   of truth on capacity.
 * ``GET /v1/compliance/organizations/{org_uuid}/users`` — offset
   paginated list of users in a given organisation. Exposed via
-  :meth:`Organizations.list_users` (one page) and
-  :meth:`Organizations.iter_users` (auto-paginate).
+  `list_users` (one page) and
+  `iter_users` (auto-paginate).
 
 Example:
     >>> from claude_compliance_sdk import ComplianceClient
@@ -59,7 +59,7 @@ class Organization:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "Organization":
-        """Build an :class:`Organization` from one decoded record."""
+        """Build an `Organization` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -87,7 +87,7 @@ class User:
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "User":
-        """Build a :class:`User` from one decoded record."""
+        """Build a `User` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -116,7 +116,7 @@ class Organizations:
         The Compliance API does not paginate this endpoint and returns
         an error when the result would exceed 1,000 organisations; that
         error surfaces as
-        :class:`~claude_compliance_sdk.InternalServerError` rather than
+        `InternalServerError` rather than
         being papered over client-side.
 
         Returns:
@@ -143,13 +143,13 @@ class Organizations:
         """Fetch one offset-paginated page of users for an organisation.
 
         Args:
-            org_uuid: Organisation UUID, from :meth:`list` results.
+            org_uuid: Organisation UUID, from `list` results.
             limit: Maximum results per page (default 500, max 1000).
             page: Opaque pagination token from a prior response's
                 ``next_page``.
 
         Returns:
-            One :class:`OffsetPage` of :class:`User` objects.
+            One `OffsetPage` of `User` objects.
         """
         body = self._transport.request(
             "GET",
@@ -166,7 +166,7 @@ class Organizations:
     ) -> Iterator[User]:
         """Iterate every user in an organisation, auto-paginating.
 
-        Same filters as :meth:`list_users` except that ``page`` is
+        Same filters as `list_users` except that ``page`` is
         managed by the iterator and therefore not accepted here.
         """
         return iter_all_offset_sync(
@@ -184,7 +184,7 @@ class AsyncOrganizations:
         self._transport = transport
 
     async def list(self) -> list[Organization]:
-        """Async analogue of :meth:`Organizations.list`."""
+        """Async analogue of `list`."""
         body = await self._transport.request("GET", ORGANIZATIONS_PATH)
         raw_items = body.get("data") or []
         return [Organization.from_dict(item) for item in raw_items]
@@ -196,7 +196,7 @@ class AsyncOrganizations:
         limit: int | None = None,
         page: str | None = None,
     ) -> OffsetPage[User]:
-        """Async analogue of :meth:`Organizations.list_users`."""
+        """Async analogue of `list_users`."""
         body = await self._transport.request(
             "GET",
             _users_path(org_uuid),
@@ -210,7 +210,7 @@ class AsyncOrganizations:
         *,
         limit: int | None = None,
     ) -> AsyncIterator[User]:
-        """Async analogue of :meth:`Organizations.iter_users`."""
+        """Async analogue of `iter_users`."""
         return iter_all_offset_async(
             self._transport,
             _users_path(org_uuid),
