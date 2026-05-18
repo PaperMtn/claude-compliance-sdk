@@ -108,6 +108,41 @@ helpers — only the I/O layer differs.
   or `OffsetPage[T]`. The sibling `.iter()` method delegates to
   `iter_all_cursor_*` / `iter_all_offset_*` from
   `_internal/pagination.py` — do not reimplement the loop per resource.
+- **The `list` shadowing trick:** a resource method named `.list()`
+  shadows the `list` builtin in the class namespace, which breaks
+  `list[str]` annotations on sibling methods (`.iter()` and friends).
+  Define a module-level alias near the top of each paginated resource
+  file (`StrList = list[str]`, etc.) and use it for those parameter
+  types. The first occurrence (and the rationale) lives in
+  `resources/activities.py`.
+- **Response dataclasses:** every resource response type (`Activity`,
+  `Chat`, `Project`, …) defines its known top-level fields and an
+  `extra: dict[str, Any] = field(default_factory=dict)`. The
+  `from_dict` classmethod is a one-liner that delegates to
+  `parse_with_extra(cls, body)` from `_internal/parsing.py` — do not
+  maintain a parallel `_KNOWN_FIELDS` frozenset; the helper derives
+  the known set from `dataclasses.fields(cls)`.
+- **List vs Detail shapes:** when the spec returns a richer payload
+  on `.get()` than on `.list()` (see `ComplianceProject` vs
+  `ComplianceProjectDetail`), model both — the list class with the
+  shallow fields, and a `<Name>Detail` subclass that inherits via
+  dataclass inheritance and adds the extra fields with defaults.
+  `parse_with_extra` works on either class because it derives the
+  known set from `dataclasses.fields()` (which includes inherited
+  fields).
+- **Delete operations** return `None`. The server's confirmation
+  payload (`{"id": ..., "type": "..._deleted"}`) is discarded;
+  success is signalled by no exception being raised. Errors raise
+  the usual `APIError` subclasses (`NotFoundError`, `ConflictError`,
+  …).
+- **Download endpoints** route through the shared helpers in
+  `_internal/downloads.py`: `download_eager_*` for the bounded
+  eager read (raises `FileTooLargeError` past `max_download_bytes`),
+  `download_to_file_*` for streamed-to-disk (unbounded — the cap
+  protects memory, not disk), `download_stream_*` for caller-managed
+  chunk iteration. Resources that need them take a
+  `max_download_bytes` constructor kwarg; the public clients pass
+  the config through.
 
 ## Testing conventions
 

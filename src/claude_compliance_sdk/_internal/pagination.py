@@ -2,10 +2,10 @@
 
 Two page shapes per the spec:
 
-* :class:`CursorPage` — used by Activity Feed, Chats, and Messages.
+* `CursorPage` — used by Activity Feed, Chats, and Messages.
   Each page payload carries ``first_id``, ``last_id``, and ``has_more``.
   Forward via ``after_id=last_id``; backward via ``before_id=first_id``.
-* :class:`OffsetPage` — used by everything else paginated. Each page
+* `OffsetPage` — used by everything else paginated. Each page
   payload carries an opaque ``next_page`` token; pass it back as the
   ``page`` query parameter to fetch the next page.
 
@@ -13,10 +13,10 @@ Both page classes are plain dataclasses (no Pydantic, per CLAUDE.md)
 parameterised over the item type ``T``. They are used identically by
 sync and async resources — the iteration helpers are what differ.
 
-The :func:`iter_all_cursor_sync` /
-:func:`iter_all_cursor_async` /
-:func:`iter_all_offset_sync` /
-:func:`iter_all_offset_async` helpers drive a resource's ``.iter()``
+The `iter_all_cursor_sync` /
+`iter_all_cursor_async` /
+`iter_all_offset_sync` /
+`iter_all_offset_async` helpers drive a resource's ``.iter()``
 method: they fetch consecutive pages, build each into a typed object
 with a caller-supplied factory, and yield items one at a time.
 """
@@ -27,7 +27,7 @@ from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, Mapping, TypeVar
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
+from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransport
 
 T = TypeVar("T")
 
@@ -55,7 +55,7 @@ class CursorPage(Generic[T]):
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any], item_factory: ItemFactory[T]) -> "CursorPage[T]":
-        """Build a :class:`CursorPage` from a decoded response body."""
+        """Build a `CursorPage` from a decoded response body."""
         raw_items = body.get("data") or []
         return cls(
             data=[item_factory(item) for item in raw_items],
@@ -71,20 +71,25 @@ class OffsetPage(Generic[T]):
 
     Attributes:
         data: Decoded items from the page's ``data`` array.
+        has_more: Server-supplied flag indicating whether further pages
+            exist after this one. Equivalent to
+            ``next_page is not None``.
         next_page: Opaque pagination token returned by the server.
             Pass it as the ``page`` query parameter to fetch the next
             page. ``None`` when this is the last page.
     """
 
     data: list[T]
+    has_more: bool
     next_page: str | None
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any], item_factory: ItemFactory[T]) -> "OffsetPage[T]":
-        """Build an :class:`OffsetPage` from a decoded response body."""
+        """Build an `OffsetPage` from a decoded response body."""
         raw_items = body.get("data") or []
         return cls(
             data=[item_factory(item) for item in raw_items],
+            has_more=bool(body.get("has_more", False)),
             next_page=_str_or_none(body.get("next_page")),
         )
 
@@ -103,7 +108,7 @@ AsyncOffsetPage = OffsetPage
 
 
 def iter_all_cursor_sync(
-    transport: BaseTransport,
+    transport: SyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
@@ -132,13 +137,13 @@ def iter_all_cursor_sync(
 
 
 async def iter_all_cursor_async(
-    transport: BaseAsyncTransport,
+    transport: AsyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
     params: Mapping[str, Any] | None = None,
 ) -> AsyncIterator[T]:
-    """Async analogue of :func:`iter_all_cursor_sync`."""
+    """Async analogue of `iter_all_cursor_sync`."""
     next_params: dict[str, Any] = dict(params or {})
     while True:
         body = await transport.request("GET", path, params=next_params)
@@ -151,7 +156,7 @@ async def iter_all_cursor_async(
 
 
 def iter_all_offset_sync(
-    transport: BaseTransport,
+    transport: SyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
@@ -179,13 +184,13 @@ def iter_all_offset_sync(
 
 
 async def iter_all_offset_async(
-    transport: BaseAsyncTransport,
+    transport: AsyncTransport,
     path: str,
     item_factory: ItemFactory[T],
     *,
     params: Mapping[str, Any] | None = None,
 ) -> AsyncIterator[T]:
-    """Async analogue of :func:`iter_all_offset_sync`."""
+    """Async analogue of `iter_all_offset_sync`."""
     next_params: dict[str, Any] = dict(params or {})
     while True:
         body = await transport.request("GET", path, params=next_params)

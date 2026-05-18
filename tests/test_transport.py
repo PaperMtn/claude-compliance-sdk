@@ -42,7 +42,6 @@ def sync_transport() -> SyncTransport:
         api_key=API_KEY,
         base_url=BASE_URL,
         timeout=30.0,
-        anthropic_version="2023-06-01",
         max_retries=0,
         rate_limit_rpm=600,
     )
@@ -56,7 +55,6 @@ async def async_transport() -> AsyncTransport:
         api_key=API_KEY,
         base_url=BASE_URL,
         timeout=30.0,
-        anthropic_version="2023-06-01",
         max_retries=0,
         rate_limit_rpm=600,
     )
@@ -129,8 +127,21 @@ def test_sync_injects_default_headers(sync_transport: SyncTransport, httpx_mock:
     request = httpx_mock.get_request()
     assert request is not None
     assert request.headers["x-api-key"] == API_KEY
-    assert request.headers["anthropic-version"] == "2023-06-01"
     assert request.headers["user-agent"].startswith(f"claude-compliance-sdk/{_SDK_VERSION}")
+
+
+def test_sync_does_not_inject_anthropic_version_header(
+    sync_transport: SyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    # The Compliance API spec lists only x-api-key as required, and
+    # production /v1/compliance/* routes 404 when the Messages-API
+    # `anthropic-version` header is present. The SDK must never send
+    # it by default.
+    httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={})
+    sync_transport.request("GET", PATH)
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert "anthropic-version" not in request.headers
 
 
 async def test_async_injects_default_headers(
@@ -141,7 +152,7 @@ async def test_async_injects_default_headers(
     request = httpx_mock.get_request()
     assert request is not None
     assert request.headers["x-api-key"] == API_KEY
-    assert request.headers["anthropic-version"] == "2023-06-01"
+    assert "anthropic-version" not in request.headers
 
 
 def test_per_request_headers_merge_over_defaults(

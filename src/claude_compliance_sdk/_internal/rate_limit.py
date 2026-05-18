@@ -11,14 +11,14 @@ counter ahead of ours.
 Two classes are exposed, one per concurrency model, since they need
 different lock primitives:
 
-* :class:`SlidingWindowLimiter` uses :class:`threading.Lock`.
-* :class:`AsyncSlidingWindowLimiter` uses :class:`asyncio.Lock`.
+* `SlidingWindowLimiter` uses `Lock`.
+* `AsyncSlidingWindowLimiter` uses `Lock`.
 
-Both expose the same :meth:`acquire` semantics — block (sync) or
+Both expose the same `acquire` semantics — block (sync) or
 suspend (async) until a slot is free, then record the timestamp.
 
 Setting ``rpm`` to ``0`` or a negative value disables the limiter; its
-:meth:`acquire` becomes a no-op so test transports and integrations
+`acquire` becomes a no-op so test transports and integrations
 that want pure server enforcement can opt out.
 """
 
@@ -37,7 +37,7 @@ class SlidingWindowLimiter:
     """Synchronous sliding-window limiter.
 
     Args:
-        rpm: Maximum number of :meth:`acquire` calls allowed in any
+        rpm: Maximum number of `acquire` calls allowed in any
             rolling 60-second window. ``rpm <= 0`` disables the
             limiter.
     """
@@ -65,7 +65,7 @@ class SlidingWindowLimiter:
 
 
 class AsyncSlidingWindowLimiter:
-    """Asynchronous mirror of :class:`SlidingWindowLimiter`."""
+    """Asynchronous mirror of `SlidingWindowLimiter`."""
 
     def __init__(self, rpm: int) -> None:
         self._rpm: int = rpm

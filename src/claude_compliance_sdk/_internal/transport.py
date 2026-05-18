@@ -1,7 +1,7 @@
 """HTTP transport for the Compliance SDK.
 
-Two concrete classes — :class:`SyncTransport` and :class:`AsyncTransport`
-— wrap :class:`httpx.Client` and :class:`httpx.AsyncClient` respectively.
+Two concrete classes — `SyncTransport` and `AsyncTransport`
+— wrap `Client` and `AsyncClient` respectively.
 Each exposes a single ``request()`` entry point used by every resource
 group, with rate limiting, header injection, retry handling, error
 mapping, and ``request_id`` lift handled in one place so resources
@@ -17,7 +17,6 @@ from typing import Any, Mapping
 
 import httpx
 
-from claude_compliance_sdk._internal.base_transport import BaseAsyncTransport, BaseTransport
 from claude_compliance_sdk._internal.rate_limit import (
     AsyncSlidingWindowLimiter,
     SlidingWindowLimiter,
@@ -40,10 +39,9 @@ def _build_user_agent() -> str:
     )
 
 
-def _build_default_headers(api_key: str, anthropic_version: str) -> dict[str, str]:
+def _build_default_headers(api_key: str) -> dict[str, str]:
     return {
         "x-api-key": api_key,
-        "anthropic-version": anthropic_version,
         "User-Agent": _build_user_agent(),
     }
 
@@ -71,23 +69,21 @@ def _wrap_transport_exception(exc: httpx.HTTPError) -> APIConnectionError:
     return APIConnectionError(f"Connection failed: {exc}")
 
 
-class SyncTransport(BaseTransport):
-    """Synchronous HTTP transport backed by :class:`httpx.Client`.
+class SyncTransport:
+    """Synchronous HTTP transport backed by `Client`.
 
-    Constructed once per :class:`~claude_compliance_sdk.ComplianceClient`
+    Constructed once per `ComplianceClient`
     and reused for the lifetime of the client. Caller is responsible for
-    invoking :meth:`close` (or letting the parent client do so via its
+    invoking `close` (or letting the parent client do so via its
     context manager).
 
     Args:
         api_key: Value sent in the ``x-api-key`` header.
         base_url: Base URL prepended to request paths.
         timeout: Per-request timeout, in seconds.
-        anthropic_version: Value sent in the ``anthropic-version``
-            header.
         max_retries: Maximum retries after the initial attempt. ``0``
             disables retries. Passed straight into the
-            :class:`RetryPolicy`.
+            `RetryPolicy`.
         rate_limit_rpm: Maximum requests per rolling 60-second window.
             ``0`` (or negative) disables the limiter. Smooths bursty
             callers; the server remains the source of truth.
@@ -99,14 +95,13 @@ class SyncTransport(BaseTransport):
         api_key: str,
         base_url: str,
         timeout: float,
-        anthropic_version: str,
         max_retries: int,
         rate_limit_rpm: int,
     ) -> None:
         self._client: httpx.Client = httpx.Client(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key, anthropic_version),
+            headers=_build_default_headers(api_key),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -134,13 +129,13 @@ class SyncTransport(BaseTransport):
             headers: Per-request header overrides, merged on top of the
                 client-level defaults.
             stream: When ``True``, the response is returned undrained as
-                an :class:`httpx.Response` and the caller must close it.
+                an `Response` and the caller must close it.
                 Used by the download helpers in Phase 3.5.
 
         Returns:
             The decoded JSON body as a ``dict``/``list``, ``None`` when
             the response had no body (e.g. ``204``), or an undrained
-            :class:`httpx.Response` when ``stream=True``.
+            `Response` when ``stream=True``.
 
         Raises:
             APIError: On any non-2xx response (after retries exhausted).
@@ -198,10 +193,10 @@ class SyncTransport(BaseTransport):
         self._client.close()
 
 
-class AsyncTransport(BaseAsyncTransport):
-    """Asynchronous HTTP transport backed by :class:`httpx.AsyncClient`.
+class AsyncTransport:
+    """Asynchronous HTTP transport backed by `AsyncClient`.
 
-    See :class:`SyncTransport` for the constructor contract and request
+    See `SyncTransport` for the constructor contract and request
     semantics — this class is the async mirror.
     """
 
@@ -211,14 +206,13 @@ class AsyncTransport(BaseAsyncTransport):
         api_key: str,
         base_url: str,
         timeout: float,
-        anthropic_version: str,
         max_retries: int,
         rate_limit_rpm: int,
     ) -> None:
         self._client: httpx.AsyncClient = httpx.AsyncClient(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key, anthropic_version),
+            headers=_build_default_headers(api_key),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -237,7 +231,7 @@ class AsyncTransport(BaseAsyncTransport):
         headers: Mapping[str, str] | None = None,
         stream: bool = False,
     ) -> Any:
-        """Async analogue of :meth:`SyncTransport.request`."""
+        """Async analogue of `request`."""
         retry_index = 0
         while True:
             await self._rate_limiter.acquire()

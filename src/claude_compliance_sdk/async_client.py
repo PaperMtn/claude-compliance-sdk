@@ -1,6 +1,6 @@
 """Asynchronous entry point for the Anthropic Compliance SDK.
 
-Mirrors :mod:`claude_compliance_sdk.client` exactly, but every method
+Mirrors `client` exactly, but every method
 that performs I/O is a coroutine. The construction surface, defaults,
 and resource group attributes are otherwise identical so callers can
 swap one client for the other without changing call sites.
@@ -12,7 +12,6 @@ from types import TracebackType
 from claude_compliance_sdk._internal.transport import AsyncTransport
 from claude_compliance_sdk.client import (
     API_KEY_ENV_VAR,
-    DEFAULT_ANTHROPIC_VERSION,
     DEFAULT_BASE_URL,
     DEFAULT_MAX_DOWNLOAD_BYTES,
     DEFAULT_MAX_RETRIES,
@@ -46,8 +45,6 @@ class AsyncComplianceClient:
         base_url: Override the API host. Defaults to the Anthropic
             production host.
         timeout: Per-request timeout in seconds. Default 30.
-        anthropic_version: Value sent in the ``anthropic-version``
-            header. Defaults to ``"2023-06-01"``.
         max_download_bytes: Maximum size, in bytes, that the eager
             ``download()`` coroutines will load into memory. Larger
             files must be fetched through ``download_to_file()`` or
@@ -62,12 +59,20 @@ class AsyncComplianceClient:
             the environment variable.
 
     Example:
-        >>> import asyncio
-        >>> from claude_compliance_sdk import AsyncComplianceClient
-        >>> async def main() -> None:
-        ...     async with AsyncComplianceClient(api_key="sk-ant-api01-...") as client:
-        ...         pass  # resource methods land in Phase 3
-        >>> asyncio.run(main())
+        ```python
+        import asyncio
+
+        from claude_compliance_sdk import AsyncComplianceClient
+
+
+        async def main() -> None:
+            async with AsyncComplianceClient(api_key="sk-ant-api01-...") as client:
+                async for activity in client.activities.iter(limit=10):
+                    print(activity.id, activity.type)
+
+
+        asyncio.run(main())
+        ```
     """
 
     def __init__(
@@ -76,7 +81,6 @@ class AsyncComplianceClient:
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
-        anthropic_version: str = DEFAULT_ANTHROPIC_VERSION,
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
         max_retries: int = DEFAULT_MAX_RETRIES,
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
@@ -90,7 +94,6 @@ class AsyncComplianceClient:
         self._api_key: str = resolved_key
         self.base_url: str = base_url
         self.timeout: float = timeout
-        self.anthropic_version: str = anthropic_version
         self.max_download_bytes: int = max_download_bytes
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -99,16 +102,19 @@ class AsyncComplianceClient:
             api_key=resolved_key,
             base_url=base_url,
             timeout=timeout,
-            anthropic_version=anthropic_version,
             max_retries=max_retries,
             rate_limit_rpm=rate_limit_rpm,
         )
 
         self.activities: AsyncActivities = AsyncActivities(self._transport)
-        self.artifacts: AsyncArtifacts = AsyncArtifacts(self._transport)
+        self.artifacts: AsyncArtifacts = AsyncArtifacts(
+            self._transport, max_download_bytes=max_download_bytes
+        )
         self.chats: AsyncChats = AsyncChats(self._transport)
-        self.files: AsyncFiles = AsyncFiles(self._transport)
-        self.generated_files: AsyncGeneratedFiles = AsyncGeneratedFiles(self._transport)
+        self.files: AsyncFiles = AsyncFiles(self._transport, max_download_bytes=max_download_bytes)
+        self.generated_files: AsyncGeneratedFiles = AsyncGeneratedFiles(
+            self._transport, max_download_bytes=max_download_bytes
+        )
         self.groups: AsyncGroups = AsyncGroups(self._transport)
         self.organizations: AsyncOrganizations = AsyncOrganizations(self._transport)
         self.project_documents: AsyncProjectDocuments = AsyncProjectDocuments(self._transport)

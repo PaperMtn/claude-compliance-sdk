@@ -7,46 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-18
+
+Initial release. Targets Compliance API spec revision Rev K
+(2026-05-04).
+
 ### Added
 
-- Project scaffolding: Poetry configuration, dependency pinning, tooling
-  config (Black, isort, Pylint, mypy, pre-commit), src/tests layout, and
-  documentation skeleton.
-- Exception hierarchy (`claude_compliance_sdk.exceptions`) rooted at
-  `ComplianceClientError`. HTTP errors under `APIError` cover 400, 401
-  (split into `InvalidAPIKeyError` / `InsufficientScopeError` by
-  best-effort message parse), 403, 404, 409, 429 (carries
-  `retry_after`), other 4xx via `APIStatusError`, and 5xx via
-  `InternalServerError`. Transport errors are `APIConnectionError` and
-  `APITimeoutError`. `APIError.from_response(...)` builds the right
-  subclass from a status code, response headers, and decoded body. All
-  classes are re-exported from `claude_compliance_sdk`.
-- HTTP transport (`SyncTransport`, `AsyncTransport` in
-  `claude_compliance_sdk._internal.transport`) backed by `httpx`. Single
-  `request()` entry point per transport handles header injection
-  (`x-api-key`, `anthropic-version`, SDK `User-Agent`), error mapping
-  via `APIError.from_response`, `request_id` propagation, and
-  streaming responses for the upcoming download helpers.
-  `ComplianceClient` and `AsyncComplianceClient` now construct the real
-  transports and their `close()` / `aclose()` delegate accordingly.
-- Retry policy (`claude_compliance_sdk._internal.retry.RetryPolicy`)
-  with exponential backoff (0.5s base, 20s cap, ±25% jitter), bounded
-  by `max_retries`. Retries 429 / 500 / 502 / 503 / 504 for safe
-  methods, `httpx.ConnectError` for any method, `httpx.ReadTimeout`
-  only for safe methods. Honours `Retry-After` on 429 over the
-  backoff schedule.
-- Client-side rate limiter
-  (`claude_compliance_sdk._internal.rate_limit.SlidingWindowLimiter`
-  / `AsyncSlidingWindowLimiter`) with a 60-second sliding window
-  sized by `rate_limit_rpm`. Defaults to 600 RPM to match server-side
-  enforcement; `rate_limit_rpm=0` disables it.
-- Pagination primitives in
-  `claude_compliance_sdk._internal.pagination`: generic dataclasses
-  `CursorPage[T]` and `OffsetPage[T]` plus four iteration helpers
-  (`iter_all_cursor_sync`, `iter_all_cursor_async`,
-  `iter_all_offset_sync`, `iter_all_offset_async`) that resources'
-  `.iter()` methods will plug into in Phase 3. `CursorPage`,
-  `OffsetPage`, `AsyncCursorPage`, and `AsyncOffsetPage` are
-  re-exported from `claude_compliance_sdk`.
+- **Public clients** — `ComplianceClient` (sync) and
+  `AsyncComplianceClient` (async). Identical resource surface on both;
+  swap one for the other and add `await` to switch styles.
+- **Resource groups** covering every Rev K endpoint:
+  - `activities` — cursor-paginated Activity Feed list / iter.
+  - `organizations` — unpaginated org list, plus paginated users
+    per org.
+  - `projects` — list, get (detail), delete, and attachment listing.
+  - `project_documents` — fetch document text content and delete.
+  - `chats` — cursor list of chats, combined chat-with-messages
+    fetch, message iteration, and delete.
+  - `files` — user-uploaded file metadata, download, delete.
+  - `generated_files` — assistant tool-use outputs (download only;
+    not deletable per spec).
+  - `artifacts` — versioned text artifacts (download only).
+  - `roles` — org-scoped role list, fetch, and permissions list.
+  - `groups` — group list, fetch, and member list.
+- **Pagination** — `CursorPage[T]` (used by the Activity Feed, Chats,
+  Messages) and `OffsetPage[T]` (everything else). Every paginated
+  resource exposes both `.list()` (one page) and `.iter()`
+  (auto-paginate) methods.
+- **Downloads** — three resource groups (`files`, `generated_files`,
+  `artifacts`) share the same trio:
+  - `.download(id)` — eager, bounded by `max_download_bytes` (default
+    100 MiB). Raises `FileTooLargeError` when the cap is exceeded.
+  - `.download_to_file(id, path)` — streamed to disk, unbounded.
+  - `.download_stream(id)` — yields chunks for caller-managed
+    streaming.
+- **Typed exception hierarchy** rooted at `ComplianceClientError`.
+  HTTP failures under `APIError` map every documented status code to
+  a typed subclass: `BadRequestError`, `InvalidAPIKeyError` /
+  `InsufficientScopeError` (a best-effort split of 401),
+  `PermissionDeniedError`, `NotFoundError`, `ConflictError`,
+  `RateLimitError` (carrying `retry_after`), `APIStatusError`,
+  `InternalServerError`. Transport-level failures live under
+  `APIConnectionError` / `APITimeoutError`. Every error carries
+  `status_code`, `request_id`, `error_type`, `error_message`, and
+  the raw response body.
+- **Resilience** — exponential-backoff retry on 429 / 5xx / connect
+  errors with `Retry-After` honoured, plus a client-side
+  sliding-window rate limiter sized to the server's 600 RPM cap.
+  Both tunable / disable-able via `max_retries` and
+  `rate_limit_rpm`.
+- **Typed responses** — every response is a plain dataclass.
+  Activity-type-specific fields and any future-spec additions are
+  preserved in an `extra: dict` so the SDK does not break when the
+  spec grows.
+- **Runnable examples** — `examples/activity_audit.py`,
+  `examples/ediscovery_export.py`, and `examples/file_pull.py`
+  demonstrate the spec's headline compliance use cases end-to-end.
+- **Documentation site** at
+  [papermtn.github.io/claude-compliance-sdk](https://papermtn.github.io/claude-compliance-sdk/).
 
-[Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/HEAD...HEAD
+[Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/PaperMtn/claude-compliance-sdk/releases/tag/v0.1.0

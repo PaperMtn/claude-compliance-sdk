@@ -74,14 +74,12 @@ def test_constructor_overrides_defaults(client_cls: type, fake_api_key: str) -> 
         api_key=fake_api_key,
         base_url="https://example.test",
         timeout=5.0,
-        anthropic_version="2099-01-01",
         max_download_bytes=1024,
         max_retries=7,
         rate_limit_rpm=300,
     )
     assert client.base_url == "https://example.test"
     assert client.timeout == 5.0
-    assert client.anthropic_version == "2099-01-01"
     assert client.max_download_bytes == 1024
     assert client.max_retries == 7
     assert client.rate_limit_rpm == 300

@@ -1,6 +1,6 @@
 [project]
 name = "claude-compliance-sdk"
-version = "0.0.0"
+version = "0.1.0"
 description = "Community Python SDK for the Anthropic Compliance API"
 authors = [{ name = "PaperMtn", email = "me@papermtn.co.uk" }]
 license = "GPL-3.0-or-later"
@@ -44,6 +44,8 @@ isort = "^5.13"
 pylint = "^3.2"
 mypy = "^1.10"
 pre-commit = "^3.7"
+mkdocs-material = "^9.7.6"
+mkdocstrings = {extras = ["python"], version = "^1.0.4"}
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

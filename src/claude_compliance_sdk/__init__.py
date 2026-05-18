@@ -2,12 +2,12 @@
 
 Public surface:
 
-* :class:`ComplianceClient` — synchronous client.
-* :class:`AsyncComplianceClient` — asynchronous client.
-* The error hierarchy rooted at :class:`ComplianceClientError`.
-* Pagination page shapes (:class:`CursorPage`, :class:`OffsetPage`,
+* `ComplianceClient` — synchronous client.
+* `AsyncComplianceClient` — asynchronous client.
+* The error hierarchy rooted at `ComplianceClientError`.
+* Pagination page shapes (`CursorPage`, `OffsetPage`,
   and their async aliases).
-* :data:`__version__` — current SDK version.
+* `__version__` — current SDK version.
 
 The two clients expose the same resource group attributes
 (``activities``, ``chats``, ``files``, ``generated_files``, ``artifacts``,
@@ -33,6 +33,7 @@ from claude_compliance_sdk.exceptions import (
     BadRequestError,
     ComplianceClientError,
     ConflictError,
+    FileTooLargeError,
     InsufficientScopeError,
     InternalServerError,
     InvalidAPIKeyError,
@@ -40,6 +41,15 @@ from claude_compliance_sdk.exceptions import (
     PermissionDeniedError,
     RateLimitError,
 )
+from claude_compliance_sdk.resources.activities import Activity
+from claude_compliance_sdk.resources.chats import Chat, ChatMessagesPage, Message
+from claude_compliance_sdk.resources.files import File
+from claude_compliance_sdk.resources.generated_files import GeneratedFile
+from claude_compliance_sdk.resources.groups import Group, GroupMember
+from claude_compliance_sdk.resources.organizations import Organization, User
+from claude_compliance_sdk.resources.project_documents import ProjectDocument
+from claude_compliance_sdk.resources.projects import Project, ProjectAttachment, ProjectDetail
+from claude_compliance_sdk.resources.roles import Permission, Role
 from claude_compliance_sdk.version import __version__
 
 __all__ = [
@@ -47,21 +57,38 @@ __all__ = [
     "APIError",
     "APIStatusError",
     "APITimeoutError",
+    "Activity",
     "AsyncComplianceClient",
     "AsyncCursorPage",
     "AsyncOffsetPage",
     "AuthenticationError",
     "BadRequestError",
+    "Chat",
+    "ChatMessagesPage",
     "ComplianceClient",
     "ComplianceClientError",
     "ConflictError",
     "CursorPage",
+    "File",
+    "FileTooLargeError",
+    "GeneratedFile",
+    "Group",
+    "GroupMember",
     "InsufficientScopeError",
     "InternalServerError",
     "InvalidAPIKeyError",
+    "Message",
     "NotFoundError",
     "OffsetPage",
+    "Organization",
+    "Permission",
     "PermissionDeniedError",
+    "Project",
+    "ProjectAttachment",
+    "ProjectDetail",
+    "ProjectDocument",
     "RateLimitError",
+    "Role",
+    "User",
     "__version__",
 ]
