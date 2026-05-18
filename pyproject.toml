@@ -1,6 +1,6 @@
 [project]
 name = "claude-compliance-sdk"
-version = "0.0.0"
+version = "0.1.0"
 description = "Community Python SDK for the Anthropic Compliance API"
 authors = [{ name = "PaperMtn", email = "me@papermtn.co.uk" }]
 license = "GPL-3.0-or-later"

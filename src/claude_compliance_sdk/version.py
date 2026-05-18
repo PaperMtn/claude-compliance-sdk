@@ -6,4 +6,4 @@ tag releases; this constant is what users see at runtime via
 ``claude_compliance_sdk.__version__``.
 """
 
-__version__ = "0.0.0"
+__version__ = "0.1.0"
