@@ -22,17 +22,20 @@ client only labels a 401 as `InvalidAPIKeyError` or
 or ``permission`` in the error message.
 
 Example:
-    >>> from claude_compliance_sdk import (
-    ...     ComplianceClient,
-    ...     InsufficientScopeError,
-    ...     RateLimitError,
-    ... )
-    >>> try:
-    ...     ComplianceClient(api_key="sk-ant-api01-...").activities.list()
-    ... except InsufficientScopeError as exc:
-    ...     print("missing scope:", exc.error_message)
-    ... except RateLimitError as exc:
-    ...     print("retry after", exc.retry_after, "seconds")
+    ```python
+    from claude_compliance_sdk import (
+        ComplianceClient,
+        InsufficientScopeError,
+        RateLimitError,
+    )
+
+    try:
+        ComplianceClient(api_key="sk-ant-api01-...").activities.list()
+    except InsufficientScopeError as exc:
+        print("missing scope:", exc.error_message)
+    except RateLimitError as exc:
+        print("retry after", exc.retry_after, "seconds")
+    ```
 """
 
 from __future__ import annotations

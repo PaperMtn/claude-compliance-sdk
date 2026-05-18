@@ -59,12 +59,20 @@ class AsyncComplianceClient:
             the environment variable.
 
     Example:
-        >>> import asyncio
-        >>> from claude_compliance_sdk import AsyncComplianceClient
-        >>> async def main() -> None:
-        ...     async with AsyncComplianceClient(api_key="sk-ant-api01-...") as client:
-        ...         pass  # resource methods land in Phase 3
-        >>> asyncio.run(main())
+        ```python
+        import asyncio
+
+        from claude_compliance_sdk import AsyncComplianceClient
+
+
+        async def main() -> None:
+            async with AsyncComplianceClient(api_key="sk-ant-api01-...") as client:
+                async for activity in client.activities.iter(limit=10):
+                    print(activity.id, activity.type)
+
+
+        asyncio.run(main())
+        ```
     """
 
     def __init__(

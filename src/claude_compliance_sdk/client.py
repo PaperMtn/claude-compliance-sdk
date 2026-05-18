@@ -60,9 +60,13 @@ class ComplianceClient:
             the environment variable.
 
     Example:
-        >>> from claude_compliance_sdk import ComplianceClient
-        >>> with ComplianceClient(api_key="sk-ant-api01-...") as client:
-        ...     pass  # resource methods land in Phase 3
+        ```python
+        from claude_compliance_sdk import ComplianceClient
+
+        with ComplianceClient(api_key="sk-ant-api01-...") as client:
+            for activity in client.activities.iter(limit=10):
+                print(activity.id, activity.type)
+        ```
     """
 
     def __init__(

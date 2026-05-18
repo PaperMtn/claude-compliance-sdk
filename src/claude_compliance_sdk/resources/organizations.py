@@ -15,12 +15,15 @@ Wraps two Compliance API endpoints:
   `iter_users` (auto-paginate).
 
 Example:
-    >>> from claude_compliance_sdk import ComplianceClient
-    >>> with ComplianceClient(api_key="sk-ant-api01-...") as client:
-    ...     for org in client.organizations.list():
-    ...         print(org.uuid, org.name)
-    ...         for user in client.organizations.iter_users(org.uuid):
-    ...             print("  ", user.email)
+    ```python
+    from claude_compliance_sdk import ComplianceClient
+
+    with ComplianceClient(api_key="sk-ant-api01-...") as client:
+        for org in client.organizations.list():
+            print(org.uuid, org.name)
+            for user in client.organizations.iter_users(org.uuid):
+                print("  ", user.email)
+    ```
 """
 
 from __future__ import annotations

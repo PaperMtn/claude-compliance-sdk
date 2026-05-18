@@ -7,13 +7,16 @@ call it. The server is the source of truth on the scope check — the
 client never inspects the API key prefix.
 
 Example:
-    >>> from claude_compliance_sdk import ComplianceClient
-    >>> with ComplianceClient(api_key="sk-ant-admin01-...") as client:
-    ...     for activity in client.activities.iter(
-    ...         created_at_gte="2025-06-01T00:00:00Z",
-    ...         activity_types=["claude_chat_created", "api_key_created"],
-    ...     ):
-    ...         print(activity.id, activity.type)
+    ```python
+    from claude_compliance_sdk import ComplianceClient
+
+    with ComplianceClient(api_key="sk-ant-admin01-...") as client:
+        for activity in client.activities.iter(
+            created_at_gte="2025-06-01T00:00:00Z",
+            activity_types=["claude_chat_created", "api_key_created"],
+        ):
+            print(activity.id, activity.type)
+    ```
 """
 
 from __future__ import annotations
