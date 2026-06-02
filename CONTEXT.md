@@ -21,9 +21,14 @@ what they sent, what Claude generated, and what files were uploaded or
 produced. It is the data plane for eDiscovery, DLP, audit, and
 incident-response use cases.
 
-The SDK targets **spec revision K, dated 2026-05-04** (PDF at the repo
-root). When the spec and this document disagree, the spec wins — file
-an issue.
+The SDK targets the Anthropic Compliance API. The **hosted spec** at
+<https://platform.claude.com/docs/en/api/compliance> is the source of
+truth — it reflects the live API as Anthropic ships changes. A
+**point-in-time PDF export** lives at the repo root
+(`2026-05-04 Anthropic Compliance API docs.pdf`, Rev K) as a stable
+reference for diffing, but may lag behind. When the hosted spec and
+this document disagree, the hosted spec wins — file an issue. When
+the PDF and the hosted spec disagree, the hosted spec wins.
 
 The SDK does **not** wrap the regular Anthropic Messages API; for that,
 use the official `anthropic` Python SDK.
@@ -98,6 +103,10 @@ as either `InvalidAPIKeyError` (key is wrong) or
 `InsufficientScopeError` (key is valid but lacks scope) by parsing
 `error.message` best-effort.
 
+> **Drift note:** the live API returns insufficient-scope failures as
+> **403 `permission_error`**, not 401. The SDK currently classifies on
+> 401 only; tracked in issue #8.
+
 ### Pagination
 
 Two styles in the spec; the SDK exposes both, plus an `.iter()` helper
@@ -131,13 +140,20 @@ tree.
 
 ### Rate limiting
 
-The server enforces **600 requests per minute per API key**. The SDK
-applies a client-side sliding-window limiter at the same rate by
+The server enforces **600 requests per minute per parent
+organisation** (shared budget across all keys under the parent). The
+SDK applies a client-side sliding-window limiter at the same rate by
 default (`rate_limit_rpm=600`) to smooth bursty callers, but the
 limiter is not a substitute for handling 429s — those are retried by
 the transport with `Retry-After` honoured over the backoff schedule.
 Set `rate_limit_rpm=0` to disable the limiter and rely purely on
 server enforcement.
+
+> **Drift note:** the SDK's per-key client limiter is over-permissive
+> against the live server limit (which is per parent organisation,
+> not per key). Multiple keys under the same parent will collectively
+> exceed the server budget even when each respects
+> `rate_limit_rpm=600`. The PDF says "per API key" — stale.
 
 ---
 
@@ -214,6 +230,7 @@ issue first.
 | 14  | `user_ids[]` length on `GET /apps/chats` validated client-side (1–10). Other server-side rules not duplicated.                                        | 2026-05-13 | locked |
 | 15  | Concrete transports without abstract bases. ABCs deleted; resources type-hint `SyncTransport` / `AsyncTransport` directly. See [ADR-0001](adr/0001-concrete-transports-without-abstract-bases.md). | 2026-05-13 | locked |
 | 16  | Response dataclass parsing via `parse_with_extra(cls, body)` over `dataclasses.fields(cls)`. No per-field coercion, no nested-type recursion. See [ADR-0002](adr/0002-response-dataclass-parsing-via-dataclasses-fields.md). | 2026-05-13 | locked |
+| 17  | Hosted spec at <https://platform.claude.com/docs/en/api/compliance> is authoritative. PDF at the repo root is a point-in-time reference for diffing only and may lag behind live behaviour. | 2026-06-01 | locked |
 
 Promote any of these to a full ADR (`docs/adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
@@ -223,11 +240,25 @@ extended argument.
 
 ## 5. Spec anchors
 
-Quick reference points lifted from the spec PDF (Rev K, 2026-05-04). If
-any of these change in a future spec rev, update them here and bump the
-"targets spec revision" line at the top.
+Quick reference points lifted from the **hosted spec**. The PDF at
+the repo root captures Rev K (2026-05-04) for diff purposes; entries
+here track current live behaviour. If anything below changes in the
+hosted spec, update it here.
 
-- **Rate limit:** 600 requests per minute per API key.
+> **Known drift between PDF and hosted spec, tracked in open issues:**
+> - **#8** — Insufficient-scope errors return **403 `permission_error`**
+>   in the live API, not 401. The SDK currently classifies on 401 only.
+> - **#9** — 5xx responses may carry `x-should-retry: false`; clients
+>   must honour it and not retry. The SDK's retry policy doesn't yet.
+> - **#10** — **529 ("Overloaded")** is transient and retryable. The
+>   SDK's `RETRYABLE_STATUSES` doesn't include it yet.
+> - **Rate-limit scope** is per parent organisation, not per API key
+>   (see below).
+
+- **Rate limit:** 600 requests per minute per **parent organisation**
+  (shared budget across all Compliance Access Keys and Admin API keys
+  under the parent, across every `/v1/compliance/*` endpoint). The
+  PDF says "per API key" — that's stale.
 - **Two key types:** `sk-ant-api01-` (Compliance Access — most resources)
   and `sk-ant-admin01-` (Admin — only valid on the Activity Feed).
 - **Two pagination styles:** cursor (`after_id` / `before_id`) on

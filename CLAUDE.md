@@ -191,8 +191,13 @@ helpers — only the I/O layer differs.
 - **PLAN.md** — phased implementation plan and current progress.
 - **CONTRIBUTING.md** — contributor-facing version of the conventions
   in this file (use that one when explaining to humans).
-- **`2026-05-04 Anthropic Compliance API docs.pdf`** — the spec
-  (Rev K). Authoritative when CONTEXT.md and the spec disagree.
+- **<https://platform.claude.com/docs/en/api/compliance>** — the live
+  hosted spec. **Authoritative** when CONTEXT.md or the PDF disagrees.
+  Updated as Anthropic ships changes; the PDF lags.
+- **`2026-05-04 Anthropic Compliance API docs.pdf`** — point-in-time
+  spec export (Rev K). Useful as a stable reference for diffing, but
+  may not match current live API behaviour. When the PDF and the
+  hosted spec disagree, the hosted spec wins.
 - **`docs/adr/`** — architecture decisions worth preserving past a
   single PR. (Empty at the time of writing; populate as decisions
   crystallise.)
