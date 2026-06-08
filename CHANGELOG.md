@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Architecture decision records are no longer published to the docs
   site. They remain in the repo under `adr/` for contributors.
 
+### Fixed
+
+- Honour the server's `x-should-retry` response header: a retryable
+  status carrying `x-should-retry: false` is no longer retried (the
+  failure is deterministic and fails identically every attempt), and
+  `x-should-retry: true` forces a retry — both still gated on method
+  safety. (#9)
+- Treat HTTP 529 (Overloaded) as transient and retry it with
+  exponential backoff, alongside 502/503/504. (#10)
+
 ## [0.1.0] - 2026-05-18
 
 Initial release. Targets Compliance API spec revision Rev K
