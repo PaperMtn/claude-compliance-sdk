@@ -52,7 +52,7 @@ class Organization:
             ``/organizations/{org_uuid}/users``).
         name: Human-readable organisation name.
         created_at: RFC 3339 creation timestamp.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     uuid: str
@@ -70,16 +70,15 @@ class Organization:
 class User:
     """A user member of an organisation.
 
-    Modelled on the spec's ``ComplianceUserMember``. Role and group
-    memberships are not part of this payload — they come from the
-    Roles and Groups resources.
+    Role and group memberships are not part of this payload — they
+    come from the Roles and Groups resources.
 
     Attributes:
         id: Tagged user identifier (``user_...``).
         full_name: Current display name.
         email: Current email address.
         created_at: RFC 3339 account creation timestamp.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str
@@ -129,7 +128,7 @@ class Organizations:
         Raises:
             InternalServerError: When the server-side 1,000-org cap is
                 exceeded. The exception's ``error_message`` carries the
-                spec's "Maximum Response Size Exceeded" text.
+                API's "Maximum Response Size Exceeded" message.
             APIError: For any other non-2xx response.
         """
         body = self._transport.request("GET", ORGANIZATIONS_PATH)

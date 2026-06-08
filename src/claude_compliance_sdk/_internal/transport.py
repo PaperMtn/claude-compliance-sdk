@@ -130,7 +130,7 @@ class SyncTransport:
                 client-level defaults.
             stream: When ``True``, the response is returned undrained as
                 an `Response` and the caller must close it.
-                Used by the download helpers in Phase 3.5.
+                Used by the download helpers.
 
         Returns:
             The decoded JSON body as a ``dict``/``list``, ``None`` when

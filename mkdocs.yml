@@ -74,7 +74,3 @@ nav:
   - Pagination: api/pagination.md
   - Errors: api/exceptions.md
   - Examples: examples.md
-  - Architecture decisions:
-    - Template: adr/0000-template.md
-    - 0001 — Concrete transports without abstract bases: adr/0001-concrete-transports-without-abstract-bases.md
-    - 0002 — Response dataclass parsing via dataclasses.fields: adr/0002-response-dataclass-parsing-via-dataclasses-fields.md

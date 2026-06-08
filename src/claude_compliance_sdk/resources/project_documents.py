@@ -12,7 +12,7 @@ The list-of-documents view lives on the parent project — call
 `list_attachments`
 and filter by ``type == "project_doc"``. The discriminator returns
 both binary files (``project_file``) and documents (``project_doc``)
-because the spec models them on the same listing endpoint.
+because the API lists them on the same endpoint.
 """
 
 from __future__ import annotations
@@ -36,9 +36,8 @@ class ProjectDocument:
         content: Document body, as plain text.
         created_at: RFC 3339 creation timestamp.
         user: Creator info (``id``, ``email_address``) or ``None`` when
-            the creator's account has been deleted. Kept as a raw dict
-            per ADR-0002.
-        extra: Any additional fields the spec adds in a later revision.
+            the creator's account has been deleted. Kept as a raw dict.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str

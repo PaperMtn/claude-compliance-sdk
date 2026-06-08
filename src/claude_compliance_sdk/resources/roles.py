@@ -44,7 +44,7 @@ class Role:
             recorded.
         updated_at: ISO 8601 last-update timestamp, or ``None`` when
             not recorded.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str
@@ -74,7 +74,7 @@ class Permission:
         resource_id: Identifier of the specific resource, or a
             wildcard when the role grants on all of them.
         action: Action permitted on the resource (e.g. ``"read"``).
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     resource_type: str

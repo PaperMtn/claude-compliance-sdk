@@ -47,7 +47,7 @@ class GeneratedFile:
         size_bytes: Size in bytes as recorded by Filestore, when known.
         created_at: RFC 3339 creation timestamp from Filestore, or
             ``None`` when not recorded.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Documentation** — reworked the generated API-reference site for an
+  end-user audience: stripped internal references (project phases, ADR
+  numbers, `CONTEXT.md` / `CLAUDE.md`, the pinned spec revision) out of
+  docstrings, moved "spec" wording to "API", retired the `Rev K` pin in
+  favour of tracking the hosted spec, and trimmed the pagination page to
+  the public page classes. Added a prominent docs-site link to the
+  README.
+
+### Removed
+
+- Architecture decision records are no longer published to the docs
+  site. They remain in the repo under `adr/` for contributors.
+
 ## [0.1.0] - 2026-05-18
 
 Initial release. Targets Compliance API spec revision Rev K
