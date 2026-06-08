@@ -53,7 +53,14 @@ class ComplianceClient:
         max_retries: Maximum retry attempts for 429 and 5xx responses.
             Default 3. Set to ``0`` to disable retries.
         rate_limit_rpm: Proactive client-side requests-per-minute cap.
-            Defaults to ``600``, matching the server-side limit.
+            Defaults to ``600``. This is **best-effort** and per-client:
+            it only smooths bursts from this client instance. The live
+            API enforces 600 RPM per *parent organisation*, shared
+            across every key and every ``/v1/compliance/*`` endpoint — a
+            budget this limiter cannot see. If you run multiple clients
+            under the same parent, set this to ``600 / n_clients`` to
+            avoid collectively exceeding it, or set it to ``0`` to
+            disable and rely on server-side 429 handling.
 
     Raises:
         ValueError: If no API key is supplied through ``api_key`` or

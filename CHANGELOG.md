@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   favour of tracking the hosted spec, and trimmed the pagination page to
   the public page classes. Added a prominent docs-site link to the
   README.
+- **Documentation** — clarified that `rate_limit_rpm` is best-effort and
+  per-client; the live API enforces 600 RPM per *parent organisation*,
+  shared across all keys, which a per-client limiter cannot enforce.
+  (#11)
 
 ### Removed
 
