@@ -8,7 +8,11 @@ attempt. The sleep itself is the caller's responsibility — sync
 
 Retry semantics:
 
-* Retry on HTTP 429, 500, 502, 503, 504.
+* Retry on HTTP 429, 500, 502, 503, 504, 529.
+* A response's ``x-should-retry`` header overrides the status set:
+  ``false`` suppresses a retry that would otherwise happen (a
+  deterministic failure), ``true`` forces one — both still gated on
+  method safety.
 * Retry on `ConnectError` for any method (the request
   never reached the server).
 * Retry on `ReadTimeout` only for safe methods; for
@@ -32,7 +36,7 @@ DEFAULT_BASE_DELAY = 0.5
 DEFAULT_CAP_DELAY = 20.0
 DEFAULT_JITTER_RATIO = 0.25
 
-RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504})
+RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504, 529})
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "DELETE"})
 
 
@@ -58,7 +62,14 @@ class RetryPolicy:
     jitter_ratio: float = DEFAULT_JITTER_RATIO
     _rng: random.Random = field(default_factory=random.Random, repr=False)
 
-    def should_retry_status(self, *, retry_index: int, method: str, status_code: int) -> bool:
+    def should_retry_status(
+        self,
+        *,
+        retry_index: int,
+        method: str,
+        status_code: int,
+        should_retry_header: bool | None = None,
+    ) -> bool:
         """Return ``True`` if a non-2xx response should be retried.
 
         Args:
@@ -70,9 +81,16 @@ class RetryPolicy:
                 response — the request may have already applied
                 server-side.
             status_code: HTTP status of the response.
+            should_retry_header: Parsed value of the server's
+                ``x-should-retry`` header — ``True``/``False`` when
+                present, ``None`` when absent. When set, it overrides
+                the default status set: the server's explicit signal
+                wins. Still gated on method safety.
         """
         if retry_index >= self.max_retries:
             return False
+        if should_retry_header is not None:
+            return should_retry_header and method.upper() in SAFE_METHODS
         if method.upper() not in SAFE_METHODS:
             return False
         return status_code in RETRYABLE_STATUSES

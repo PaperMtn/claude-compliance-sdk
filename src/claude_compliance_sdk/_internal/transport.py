@@ -63,6 +63,19 @@ def _build_api_error(response: httpx.Response) -> APIError:
     )
 
 
+def _parse_should_retry(headers: httpx.Headers) -> bool | None:
+    """Read the server's ``x-should-retry`` hint, if present.
+
+    Returns ``True``/``False`` when the header is set, or ``None`` when
+    absent so the retry policy falls back to its default status-based
+    decision.
+    """
+    raw: str | None = headers.get("x-should-retry")
+    if raw is None:
+        return None
+    return raw.strip().lower() == "true"
+
+
 def _wrap_transport_exception(exc: httpx.HTTPError) -> APIConnectionError:
     if isinstance(exc, httpx.TimeoutException):
         return APITimeoutError(f"Request timed out: {exc}")
@@ -170,7 +183,10 @@ class SyncTransport:
                     response.close()
                 api_error = _build_api_error(response)
                 if self._retry_policy.should_retry_status(
-                    retry_index=retry_index, method=method, status_code=response.status_code
+                    retry_index=retry_index,
+                    method=method,
+                    status_code=response.status_code,
+                    should_retry_header=_parse_should_retry(response.headers),
                 ):
                     retry_after = (
                         api_error.retry_after if isinstance(api_error, RateLimitError) else None
@@ -257,7 +273,10 @@ class AsyncTransport:
                     await response.aclose()
                 api_error = _build_api_error(response)
                 if self._retry_policy.should_retry_status(
-                    retry_index=retry_index, method=method, status_code=response.status_code
+                    retry_index=retry_index,
+                    method=method,
+                    status_code=response.status_code,
+                    should_retry_header=_parse_should_retry(response.headers),
                 ):
                     retry_after = (
                         api_error.retry_after if isinstance(api_error, RateLimitError) else None
