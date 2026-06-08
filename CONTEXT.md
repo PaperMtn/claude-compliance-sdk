@@ -98,14 +98,12 @@ spec, the IDs, and the lifecycles all differ.
   reject it.
 
 The SDK does **not** check the key prefix locally before calling an
-endpoint. The server enforces. The client labels the resulting `401`
-as either `InvalidAPIKeyError` (key is wrong) or
-`InsufficientScopeError` (key is valid but lacks scope) by parsing
-`error.message` best-effort.
-
-> **Drift note:** the live API returns insufficient-scope failures as
-> **403 `permission_error`**, not 401. The SDK currently classifies on
-> 401 only; tracked in issue #8.
+endpoint. The server enforces; the client labels. A `401` is an invalid
+or revoked key (`InvalidAPIKeyError`). Insufficient-scope failures come
+back as **403 `permission_error`** and are labelled
+`InsufficientScopeError` (a subclass of `PermissionDeniedError`),
+refined from `error.type`/message. See
+[ADR-0003](adr/0003-scope-errors-are-403.md).
 
 ### Pagination
 
@@ -220,7 +218,7 @@ issue first.
 | 4   | UX patterned on `slack_sdk`, not the official `anthropic` SDK.                                                                                        | 2026-05-13 | locked |
 | 5   | Single runtime dependency: `httpx`. New runtime deps require an issue first.                                                                          | 2026-05-13 | locked |
 | 6   | Sync + async clients with identical public surface.                                                                                                   | 2026-05-13 | locked |
-| 7   | 401 split into `InvalidAPIKeyError` / `InsufficientScopeError` via best-effort `error.message` parse.                                                  | 2026-05-13 | locked |
+| 7   | Scope errors are 403, not 401. `InsufficientScopeError` subclasses `PermissionDeniedError`; a 401 is always `InvalidAPIKeyError`. Supersedes the original "401 split". See [ADR-0003](adr/0003-scope-errors-are-403.md). | 2026-06-08 | locked |
 | 8   | No client-side admin-key prefix gate. Let the server 401.                                                                                              | 2026-05-13 | locked |
 | 9   | Auto-pagination via a separate `.iter()` method per resource, not a `flag` on `.list()`.                                                              | 2026-05-13 | locked |
 | 10  | Coverage tracked locally with `pytest-cov`. CI enforces `--cov-fail-under=90`. No Codecov.                                                            | 2026-05-13 | locked |
@@ -244,16 +242,6 @@ Quick reference points lifted from the **hosted spec**. The PDF at
 the repo root captures Rev K (2026-05-04) for diff purposes; entries
 here track current live behaviour. If anything below changes in the
 hosted spec, update it here.
-
-> **Known drift between PDF and hosted spec, tracked in open issues:**
-> - **#8** — Insufficient-scope errors return **403 `permission_error`**
->   in the live API, not 401. The SDK currently classifies on 401 only.
-> - **#9** — 5xx responses may carry `x-should-retry: false`; clients
->   must honour it and not retry. The SDK's retry policy doesn't yet.
-> - **#10** — **529 ("Overloaded")** is transient and retryable. The
->   SDK's `RETRYABLE_STATUSES` doesn't include it yet.
-> - **Rate-limit scope** is per parent organisation, not per API key
->   (see below).
 
 - **Rate limit:** 600 requests per minute per **parent organisation**
   (shared budget across all Compliance Access Keys and Admin API keys

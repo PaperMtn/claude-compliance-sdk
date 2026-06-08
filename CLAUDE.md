@@ -32,10 +32,12 @@ maintainer first.
 
 - **License:** GPL-3.0-or-later. All source files inherit the project
   license; do not add per-file headers unless asked.
-- **401 split:** keep `InvalidAPIKeyError` and `InsufficientScopeError`
-  as subclasses of `AuthenticationError`. Detect via best-effort parse
-  of `error.message`. Server is the source of truth; the client only
-  labels.
+- **Scope errors are 403 (ADR-0003).** The live API returns
+  insufficient-scope failures as 403 `permission_error`, so
+  `InsufficientScopeError` is a subclass of `PermissionDeniedError`
+  (403), and a 401 is always `InvalidAPIKeyError`. The client refines a
+  403 via `error.type`/message; the server is the source of truth. This
+  supersedes the original Phase-0 "401 split".
 - **Admin-key local gate:** **skipped.** Do not pre-flight check the
   key prefix before calling admin-only endpoints. Let the server 401
   and surface that as `InvalidAPIKeyError` / `InsufficientScopeError`.

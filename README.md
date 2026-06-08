@@ -91,10 +91,12 @@ scopes; the scope set is fixed for the lifetime of the key:
 | `delete:compliance_user_data` | Deleting chats and user-uploaded files |
 | `read:compliance_org_data` | Organisations, users, roles, permissions, groups |
 
-A request that the server rejects with `401`
-is surfaced as either `InvalidAPIKeyError` (the key is wrong) or
-`InsufficientScopeError` (the key is valid but missing the scope the
-endpoint needs).
+Authentication and authorisation failures surface as typed exceptions: a
+`401` (invalid or revoked key) becomes `InvalidAPIKeyError`, and a `403`
+becomes `PermissionDeniedError` — refined to `InsufficientScopeError`
+when the key is valid but missing the scope the endpoint needs. Catch
+`PermissionDeniedError` to handle any authorisation failure, or
+`InsufficientScopeError` for the scope-specific case.
 
 Pass the key when constructing the client:
 

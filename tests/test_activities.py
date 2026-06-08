@@ -327,14 +327,14 @@ def test_iter_empty_page(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -
 def test_list_propagates_insufficient_scope_error(
     sync_client: ComplianceClient, httpx_mock: HTTPXMock
 ) -> None:
-    # Verbatim from the spec: a Compliance Access Key without
-    # read:compliance_activities calling the Activity Feed.
+    # From the spec: a Compliance Access Key without
+    # read:compliance_activities calling the Activity Feed gets a 403.
     httpx_mock.add_response(
         url=f"{BASE_URL}{ACTIVITIES_PATH}",
-        status_code=401,
+        status_code=403,
         json={
             "error": {
-                "type": "authentication_error",
+                "type": "permission_error",
                 "message": (
                     "The API key provided does not have the "
                     "`read:compliance_activities` scope required for this endpoint. "
@@ -394,10 +394,10 @@ async def test_async_list_propagates_insufficient_scope_error(
 ) -> None:
     httpx_mock.add_response(
         url=f"{BASE_URL}{ACTIVITIES_PATH}",
-        status_code=401,
+        status_code=403,
         json={
             "error": {
-                "type": "authentication_error",
+                "type": "permission_error",
                 "message": (
                     "The API key provided does not have the "
                     "`read:compliance_activities` scope required for this endpoint."

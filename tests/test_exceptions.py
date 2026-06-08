@@ -66,9 +66,14 @@ def test_http_errors_descend_from_api_error() -> None:
         assert issubclass(klass, APIError)
 
 
-def test_401_subclasses_descend_from_authentication_error() -> None:
+def test_invalid_api_key_descends_from_authentication_error() -> None:
     assert issubclass(InvalidAPIKeyError, AuthenticationError)
-    assert issubclass(InsufficientScopeError, AuthenticationError)
+
+
+def test_insufficient_scope_descends_from_permission_denied() -> None:
+    # Scope failures are 403, not 401 — see ADR-0003.
+    assert issubclass(InsufficientScopeError, PermissionDeniedError)
+    assert not issubclass(InsufficientScopeError, AuthenticationError)
 
 
 def test_timeout_descends_from_connection_error() -> None:
@@ -118,8 +123,8 @@ def _spec_body(error_type: str, message: str) -> dict[str, Any]:
         ),
         (
             403,
-            "permission_error",
-            "Forbidden.",
+            "api_error",
+            "Access denied.",
             PermissionDeniedError,
         ),
         (
@@ -177,7 +182,7 @@ def test_from_response_unmapped_other_status_falls_back_to_api_error() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 401 split — server messages from the spec PDF
+# 401 / 403 classification — scope failures are 403 (ADR-0003)
 # ---------------------------------------------------------------------------
 
 
@@ -187,6 +192,19 @@ def test_401_with_invalid_key_message_routes_to_invalid_api_key_error() -> None:
         body=_spec_body(
             "authentication_error",
             "The API key provided is invalid or has been revoked.",
+        ),
+    )
+    assert type(err) is InvalidAPIKeyError
+
+
+def test_401_with_scope_wording_still_routes_to_invalid_api_key_error() -> None:
+    # Scope wording in a 401 body must NOT yield InsufficientScopeError;
+    # scope failures are 403 (ADR-0003). The only documented 401 is a bad key.
+    err = APIError.from_response(
+        status_code=401,
+        body=_spec_body(
+            "authentication_error",
+            "The API key provided does not have the `read:compliance_activities` scope.",
         ),
     )
     assert type(err) is InvalidAPIKeyError
@@ -208,19 +226,21 @@ def test_401_with_invalid_key_message_routes_to_invalid_api_key_error() -> None:
         "required for this endpoint. Got scopes: [read:compliance_activities].",
     ],
 )
-def test_401_with_scope_message_routes_to_insufficient_scope_error(message: str) -> None:
+def test_403_permission_error_routes_to_insufficient_scope_error(message: str) -> None:
     err = APIError.from_response(
-        status_code=401,
-        body=_spec_body("authentication_error", message),
+        status_code=403,
+        body=_spec_body("permission_error", message),
     )
     assert type(err) is InsufficientScopeError
 
 
-def test_401_with_permission_message_routes_to_insufficient_scope_error() -> None:
+def test_403_with_permission_message_but_other_type_routes_to_insufficient_scope() -> None:
+    # Even without the permission_error type, a scope/permission hint in
+    # the message refines the 403.
     err = APIError.from_response(
-        status_code=401,
+        status_code=403,
         body=_spec_body(
-            "authentication_error",
+            "forbidden",
             "The API key lacks permission to access this resource.",
         ),
     )
