@@ -7,15 +7,17 @@ The Compliance API requires an Enterprise plan, and primary owners can enable it
 > **Unofficial.** This is a community-maintained project. It is not
 > produced, endorsed, or supported by Anthropic.
 
+📚 **[Read the documentation](https://papermtn.github.io/claude-compliance-sdk/)** — full API reference, generated from the source.
+
 ## Features
 
 - Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, and Organisations.
 - Full sync + async parity. Every resource method is available on both `ComplianceClient` and `AsyncComplianceClient` under the same name.
-- Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future spec revision adding a field cannot break the SDK.
+- Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future API revision adding a field cannot break the SDK.
 - Built-in retry with exponential backoff that honours `Retry-After`, plus a client-side sliding-window rate limiter that matches the server's 600 RPM cap.
 - Streamed downloads with a configurable memory ceiling — switch from eager bytes to `download_to_file()` or `download_stream()` for anything larger.
-- Typed exception hierarchy. Every spec error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
-- Targets spec revision **Rev K** (2026-05-04).
+- Typed exception hierarchy. Every API error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
+- Tracks the hosted [Anthropic Compliance API spec](https://platform.claude.com/docs/en/api/compliance).
 
 ## Requirements
 Python 3.11+.
@@ -89,10 +91,12 @@ scopes; the scope set is fixed for the lifetime of the key:
 | `delete:compliance_user_data` | Deleting chats and user-uploaded files |
 | `read:compliance_org_data` | Organisations, users, roles, permissions, groups |
 
-A request that the server rejects with `401`
-is surfaced as either `InvalidAPIKeyError` (the key is wrong) or
-`InsufficientScopeError` (the key is valid but missing the scope the
-endpoint needs).
+Authentication and authorisation failures surface as typed exceptions: a
+`401` (invalid or revoked key) becomes `InvalidAPIKeyError`, and a `403`
+becomes `PermissionDeniedError` — refined to `InsufficientScopeError`
+when the key is valid but missing the scope the endpoint needs. Catch
+`PermissionDeniedError` to handle any authorisation failure, or
+`InsufficientScopeError` for the scope-specific case.
 
 Pass the key when constructing the client:
 
@@ -186,13 +190,21 @@ are not.
 | `timeout` | `30.0` | Per-request timeout, seconds. |
 | `max_download_bytes` | `100 * 1024 * 1024` | Eager-download cap. |
 | `max_retries` | `3` | Retry attempts on 429/5xx and connect errors. `0` disables. |
-| `rate_limit_rpm` | `600` | Client-side sliding-window cap matching the server. `0` disables. |
+| `rate_limit_rpm` | `600` | Best-effort, per-client burst smoothing. `0` disables. See the note below. |
+
+> **On `rate_limit_rpm`:** the limiter is per-client and best-effort — it
+> smooths bursts from a single client instance. The live API enforces
+> **600 RPM per parent organisation**, shared across every key and every
+> `/v1/compliance/*` endpoint, which a per-client limiter can't see. If you
+> run multiple clients under one parent, set `rate_limit_rpm` to
+> `600 / n_clients`, or set it to `0` and rely on the SDK's 429 retry
+> handling.
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, branch model,
 coding conventions, and PR checklist. Architecture decisions worth
-preserving live as numbered ADRs under [`docs/adr/`](docs/adr/).
+preserving live as numbered ADRs under [`adr/`](adr/).
 
 ## License
 

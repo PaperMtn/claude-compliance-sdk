@@ -13,7 +13,3 @@ that auto-paginates.
         - OffsetPage
         - AsyncCursorPage
         - AsyncOffsetPage
-        - iter_all_cursor_sync
-        - iter_all_cursor_async
-        - iter_all_offset_sync
-        - iter_all_offset_async

@@ -1,8 +1,8 @@
 """Client-side rate limiter for the transport layer.
 
 Sliding-window over a 60-second period, sized by ``rate_limit_rpm``.
-Defaults to 600 requests per minute to match the server-side limit
-documented in CONTEXT.md, smoothing bursty callers so they do not have
+Defaults to 600 requests per minute to match the documented
+server-side limit, smoothing bursty callers so they do not have
 to choose between hitting a 429 and writing their own pacing layer.
 This limiter is **not** a substitute for handling 429s — the server
 remains the source of truth, and rare bursts can still trip its

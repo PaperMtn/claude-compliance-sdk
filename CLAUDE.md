@@ -32,10 +32,12 @@ maintainer first.
 
 - **License:** GPL-3.0-or-later. All source files inherit the project
   license; do not add per-file headers unless asked.
-- **401 split:** keep `InvalidAPIKeyError` and `InsufficientScopeError`
-  as subclasses of `AuthenticationError`. Detect via best-effort parse
-  of `error.message`. Server is the source of truth; the client only
-  labels.
+- **Scope errors are 403 (ADR-0003).** The live API returns
+  insufficient-scope failures as 403 `permission_error`, so
+  `InsufficientScopeError` is a subclass of `PermissionDeniedError`
+  (403), and a 401 is always `InvalidAPIKeyError`. The client refines a
+  403 via `error.type`/message; the server is the source of truth. This
+  supersedes the original Phase-0 "401 split".
 - **Admin-key local gate:** **skipped.** Do not pre-flight check the
   key prefix before calling admin-only endpoints. Let the server 401
   and surface that as `InvalidAPIKeyError` / `InsufficientScopeError`.
@@ -171,7 +173,7 @@ helpers — only the I/O layer differs.
   - **CLAUDE.md** — new locked decision, agent-do/don't, or pointer to
     a new file/location.
 - Promote any decision that gained a real follow-up discussion into a
-  numbered ADR under `docs/adr/` (use `docs/adr/0000-template.md`).
+  numbered ADR under `adr/` (use `adr/0000-template.md`).
 - Run `pre-commit run --all-files` before declaring work done.
 - Run `pytest --cov --cov-fail-under=90` and `mypy src/claude_compliance_sdk`
   before declaring work done.
@@ -191,8 +193,13 @@ helpers — only the I/O layer differs.
 - **PLAN.md** — phased implementation plan and current progress.
 - **CONTRIBUTING.md** — contributor-facing version of the conventions
   in this file (use that one when explaining to humans).
-- **`2026-05-04 Anthropic Compliance API docs.pdf`** — the spec
-  (Rev K). Authoritative when CONTEXT.md and the spec disagree.
-- **`docs/adr/`** — architecture decisions worth preserving past a
-  single PR. (Empty at the time of writing; populate as decisions
-  crystallise.)
+- **<https://platform.claude.com/docs/en/api/compliance>** — the live
+  hosted spec. **Authoritative** when CONTEXT.md or the PDF disagrees.
+  Updated as Anthropic ships changes; the PDF lags.
+- **`2026-05-04 Anthropic Compliance API docs.pdf`** — point-in-time
+  spec export (Rev K). Useful as a stable reference for diffing, but
+  may not match current live API behaviour. When the PDF and the
+  hosted spec disagree, the hosted spec wins.
+- **`adr/`** — architecture decisions worth preserving past a single
+  PR. Kept in the repo for contributors; not published to the docs
+  site.

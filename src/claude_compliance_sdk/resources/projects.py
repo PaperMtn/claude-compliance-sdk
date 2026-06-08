@@ -60,9 +60,8 @@ class Project:
         is_private: ``True`` when the project is visible only to the
             creator and specified collaborators.
         user: Creator info (``id``, ``email_address``) or ``None`` when
-            the creator's account has been deleted. Kept as a raw dict
-            per ADR-0002 (no nested-type recursion).
-        extra: Any additional fields the spec adds in a later revision.
+            the creator's account has been deleted. Kept as a raw dict.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str
@@ -112,7 +111,7 @@ class ProjectAttachment:
     Discriminate on `type`:
 
     * ``"project_file"`` — binary file. Download via the Files resource
-      (Phase 3.5) using `id` as ``claude_file_id``.
+      using `id` as ``claude_file_id``.
     * ``"project_doc"`` — plain-text document. Fetch contents via
       `get`
       using `id` as the document ID.
@@ -126,7 +125,7 @@ class ProjectAttachment:
         filename: Display name.
         mime_type: MIME type. ``"text/plain"`` for project docs;
             otherwise whatever the user uploaded.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     type: str
@@ -297,7 +296,7 @@ class Projects:
     def delete(self, project_id: str) -> None:
         """Hard-delete a project and all its associated data.
 
-        Per spec, the project must have **no attached chats** — the
+        The project must have **no attached chats** — the
         server returns 409 / `ConflictError`
         otherwise. Detach or delete the chats first.
 

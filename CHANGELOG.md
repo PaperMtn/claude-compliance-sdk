@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-08
+
+### Added
+
+- `Message.generated_files` — assistant tool-use file outputs are now a
+  typed field on chat messages, alongside `files` and `artifacts`,
+  instead of arriving in `extra`. (#7)
+
+### Changed
+
+- **BREAKING:** scope failures are now classified on HTTP 403, matching
+  the live API. `InsufficientScopeError` is a subclass of
+  `PermissionDeniedError` (403), not `AuthenticationError` (401); a 401
+  is always `InvalidAPIKeyError`. Callers that caught
+  `AuthenticationError` to handle scope problems must catch
+  `PermissionDeniedError` (or `InsufficientScopeError`). See ADR-0003.
+  (#8)
+- **Documentation** — reworked the generated API-reference site for an
+  end-user audience: stripped internal references (project phases, ADR
+  numbers, `CONTEXT.md` / `CLAUDE.md`, the pinned spec revision) out of
+  docstrings, moved "spec" wording to "API", retired the `Rev K` pin in
+  favour of tracking the hosted spec, and trimmed the pagination page to
+  the public page classes. Added a prominent docs-site link to the
+  README.
+- **Documentation** — clarified that `rate_limit_rpm` is best-effort and
+  per-client; the live API enforces 600 RPM per *parent organisation*,
+  shared across all keys, which a per-client limiter cannot enforce.
+  (#11)
+
+### Removed
+
+- Architecture decision records are no longer published to the docs
+  site. They remain in the repo under `adr/` for contributors.
+
+### Fixed
+
+- Honour the server's `x-should-retry` response header: a retryable
+  status carrying `x-should-retry: false` is no longer retried (the
+  failure is deterministic and fails identically every attempt), and
+  `x-should-retry: true` forces a retry — both still gated on method
+  safety. (#9)
+- Treat HTTP 529 (Overloaded) as transient and retry it with
+  exponential backoff, alongside 502/503/504. (#10)
+
 ## [0.1.0] - 2026-05-18
 
 Initial release. Targets Compliance API spec revision Rev K
@@ -67,5 +111,6 @@ Initial release. Targets Compliance API spec revision Rev K
 - **Documentation site** at
   [papermtn.github.io/claude-compliance-sdk](https://papermtn.github.io/claude-compliance-sdk/).
 
-[Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/PaperMtn/claude-compliance-sdk/releases/tag/v0.1.0

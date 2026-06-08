@@ -45,7 +45,7 @@ class Group:
         updated_at: ISO 8601 last-update timestamp, or ``None``.
         roles: IDs of roles assigned to the group, or ``None`` when
             the server did not include the field.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str
@@ -74,7 +74,7 @@ class GroupMember:
             ``None`` when not recorded.
         updated_at: ISO 8601 membership last-update timestamp, or
             ``None`` when not recorded.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     user_id: str

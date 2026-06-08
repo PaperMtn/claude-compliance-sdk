@@ -32,15 +32,15 @@ PATH = "/v1/compliance/activities"
 # ---------------------------------------------------------------------------
 
 
-def test_retryable_statuses_match_plan() -> None:
-    assert RETRYABLE_STATUSES == {429, 500, 502, 503, 504}
+def test_retryable_statuses_set() -> None:
+    assert RETRYABLE_STATUSES == {429, 500, 502, 503, 504, 529}
 
 
 def test_safe_methods_set() -> None:
     assert SAFE_METHODS == {"GET", "HEAD", "OPTIONS", "DELETE"}
 
 
-@pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+@pytest.mark.parametrize("status", [429, 500, 502, 503, 504, 529])
 def test_retries_retryable_status_for_safe_method(status: int) -> None:
     policy = RetryPolicy(max_retries=3)
     assert policy.should_retry_status(retry_index=0, method="GET", status_code=status)
@@ -72,6 +72,50 @@ def test_max_retries_zero_disables_retries() -> None:
 def test_method_check_is_case_insensitive() -> None:
     policy = RetryPolicy(max_retries=3)
     assert policy.should_retry_status(retry_index=0, method="get", status_code=500)
+
+
+# ---------------------------------------------------------------------------
+# RetryPolicy — should_retry_status with x-should-retry header
+# ---------------------------------------------------------------------------
+
+
+def test_should_retry_header_false_suppresses_retryable_status() -> None:
+    policy = RetryPolicy(max_retries=3)
+    assert not policy.should_retry_status(
+        retry_index=0, method="GET", status_code=500, should_retry_header=False
+    )
+
+
+def test_should_retry_header_true_forces_retry_on_safe_method() -> None:
+    policy = RetryPolicy(max_retries=3)
+    # Even a normally non-retryable status is retried when the server says so.
+    assert policy.should_retry_status(
+        retry_index=0, method="GET", status_code=400, should_retry_header=True
+    )
+
+
+def test_should_retry_header_true_still_gated_on_method_safety() -> None:
+    policy = RetryPolicy(max_retries=3)
+    assert not policy.should_retry_status(
+        retry_index=0, method="POST", status_code=500, should_retry_header=True
+    )
+
+
+def test_should_retry_header_none_falls_back_to_status_set() -> None:
+    policy = RetryPolicy(max_retries=3)
+    assert policy.should_retry_status(
+        retry_index=0, method="GET", status_code=529, should_retry_header=None
+    )
+    assert not policy.should_retry_status(
+        retry_index=0, method="GET", status_code=404, should_retry_header=None
+    )
+
+
+def test_should_retry_header_respects_max_retries() -> None:
+    policy = RetryPolicy(max_retries=2)
+    assert not policy.should_retry_status(
+        retry_index=2, method="GET", status_code=500, should_retry_header=True
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -351,6 +395,105 @@ def test_sync_exhausts_retries_on_connect_error(
     assert len(fake_sleep) == 3
 
 
+def test_sync_suppresses_retry_on_x_should_retry_false(
+    httpx_mock: HTTPXMock, fake_sleep: list[float]
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=500,
+        json={"error": {"type": "api_error", "message": "deterministic"}},
+        headers={"x-should-retry": "false"},
+    )
+
+    transport = _sync_transport(max_retries=3)
+    try:
+        with pytest.raises(InternalServerError):
+            transport.request("GET", PATH)
+    finally:
+        transport.close()
+
+    assert fake_sleep == []
+
+
+def test_sync_retries_on_x_should_retry_true(
+    httpx_mock: HTTPXMock, fake_sleep: list[float]
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=500,
+        json={"error": {"type": "internal_error", "message": "boom"}},
+        headers={"x-should-retry": "true"},
+    )
+    httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={"data": []})
+
+    transport = _sync_transport(max_retries=3)
+    try:
+        result = transport.request("GET", PATH)
+    finally:
+        transport.close()
+
+    assert result == {"data": []}
+    assert len(fake_sleep) == 1
+
+
+def test_sync_retries_529_then_succeeds(httpx_mock: HTTPXMock, fake_sleep: list[float]) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=529,
+        json={"error": {"type": "overloaded_error", "message": "overloaded"}},
+    )
+    httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={"data": []})
+
+    transport = _sync_transport(max_retries=3)
+    try:
+        result = transport.request("GET", PATH)
+    finally:
+        transport.close()
+
+    assert result == {"data": []}
+    assert len(fake_sleep) == 1
+
+
+def test_sync_529_with_x_should_retry_false_not_retried(
+    httpx_mock: HTTPXMock, fake_sleep: list[float]
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=529,
+        json={"error": {"type": "overloaded_error", "message": "overloaded"}},
+        headers={"x-should-retry": "false"},
+    )
+
+    transport = _sync_transport(max_retries=3)
+    try:
+        with pytest.raises(InternalServerError):
+            transport.request("GET", PATH)
+    finally:
+        transport.close()
+
+    assert fake_sleep == []
+
+
+def test_sync_max_retries_zero_ignores_x_should_retry_true(
+    httpx_mock: HTTPXMock, fake_sleep: list[float]
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=500,
+        json={"error": {"type": "internal_error", "message": "boom"}},
+        headers={"x-should-retry": "true"},
+    )
+
+    transport = _sync_transport(max_retries=0)
+    try:
+        with pytest.raises(InternalServerError):
+            transport.request("GET", PATH)
+    finally:
+        transport.close()
+
+    assert fake_sleep == []
+
+
 # ---------------------------------------------------------------------------
 # Transport integration — async
 # ---------------------------------------------------------------------------
@@ -410,3 +553,43 @@ async def test_async_retries_connect_error(
         await transport.aclose()
 
     assert result == {"data": []}
+
+
+async def test_async_suppresses_retry_on_x_should_retry_false(
+    httpx_mock: HTTPXMock, fake_async_sleep: list[float]
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=500,
+        json={"error": {"type": "api_error", "message": "deterministic"}},
+        headers={"x-should-retry": "false"},
+    )
+
+    transport = _async_transport(max_retries=3)
+    try:
+        with pytest.raises(InternalServerError):
+            await transport.request("GET", PATH)
+    finally:
+        await transport.aclose()
+
+    assert fake_async_sleep == []
+
+
+async def test_async_retries_529_then_succeeds(
+    httpx_mock: HTTPXMock, fake_async_sleep: list[float]
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=529,
+        json={"error": {"type": "overloaded_error", "message": "overloaded"}},
+    )
+    httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={"data": []})
+
+    transport = _async_transport(max_retries=3)
+    try:
+        result = await transport.request("GET", PATH)
+    finally:
+        await transport.aclose()
+
+    assert result == {"data": []}
+    assert len(fake_async_sleep) == 1

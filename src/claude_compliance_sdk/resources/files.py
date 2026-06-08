@@ -4,11 +4,11 @@ Wraps the ``/v1/compliance/apps/chats/files/{claude_file_id}``
 endpoints for metadata, download, and deletion of files a user
 attached to a chat.
 
-Three resources in Phase 3.5 share the same download trio
-(`download` / `download_to_file` / `download_stream`)
-backed by helpers in `downloads`.
-Of the three, only user-uploaded files are deletable per spec —
-generated files and artifacts have no DELETE endpoint.
+User-uploaded files, generated files, and artifacts share the same
+download trio (`download` / `download_to_file` / `download_stream`),
+backed by helpers in `downloads`. Of the three, only user-uploaded
+files are deletable — generated files and artifacts have no DELETE
+endpoint.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class File:
             known.
         message_ids: Chat message IDs that reference this file. One
             file can be attached to multiple messages.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str
