@@ -2,8 +2,8 @@
 
 Three runnable scripts shipped under
 [`examples/`](https://github.com/PaperMtn/claude-compliance-sdk/tree/main/examples)
-in the source tree, drawn from the spec's headline compliance use
-cases. Each reads its API key from `ANTHROPIC_COMPLIANCE_API_KEY` and
+in the source tree, drawn from common compliance use cases. Each
+reads its API key from `ANTHROPIC_COMPLIANCE_API_KEY` and
 takes simple CLI flags — run any of them with `--help` for the
 available options.
 

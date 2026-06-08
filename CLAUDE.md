@@ -171,7 +171,7 @@ helpers — only the I/O layer differs.
   - **CLAUDE.md** — new locked decision, agent-do/don't, or pointer to
     a new file/location.
 - Promote any decision that gained a real follow-up discussion into a
-  numbered ADR under `docs/adr/` (use `docs/adr/0000-template.md`).
+  numbered ADR under `adr/` (use `adr/0000-template.md`).
 - Run `pre-commit run --all-files` before declaring work done.
 - Run `pytest --cov --cov-fail-under=90` and `mypy src/claude_compliance_sdk`
   before declaring work done.
@@ -198,6 +198,6 @@ helpers — only the I/O layer differs.
   spec export (Rev K). Useful as a stable reference for diffing, but
   may not match current live API behaviour. When the PDF and the
   hosted spec disagree, the hosted spec wins.
-- **`docs/adr/`** — architecture decisions worth preserving past a
-  single PR. (Empty at the time of writing; populate as decisions
-  crystallise.)
+- **`adr/`** — architecture decisions worth preserving past a single
+  PR. Kept in the repo for contributors; not published to the docs
+  site.

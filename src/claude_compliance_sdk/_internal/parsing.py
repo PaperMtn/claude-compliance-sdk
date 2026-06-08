@@ -4,7 +4,7 @@ Every typed response in the SDK (``Activity``, ``Chat``, ``Project``,
 ``Organization``, ``Role``, …) follows the same recipe: a handful of
 known top-level fields modelled as dataclass attributes, plus an
 ``extra: dict[str, Any]`` field that captures activity-type-specific
-keys and any new top-level fields the spec adds later. The split
+keys and any new top-level fields the API adds later. The split
 between known and unknown keys is a *property of the dataclass* — it
 should be derived from the field set, not maintained by hand in a
 parallel frozenset.

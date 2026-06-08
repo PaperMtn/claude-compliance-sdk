@@ -29,15 +29,14 @@ resource groups, page primitives, and error hierarchy.
   shapes plus the `iter_all_*` helpers.
 - **[Errors](api/exceptions.md)** — `ComplianceClientError` and the
   typed subclasses you'll catch.
-- **[Examples](examples.md)** — runnable scripts for the
-  spec's headline use cases (source under
+- **[Examples](examples.md)** — runnable scripts for common
+  compliance use cases (source under
   [`examples/`](https://github.com/PaperMtn/claude-compliance-sdk/tree/main/examples)).
-- **Architecture decisions** — ADRs under `docs/adr/` capture the
-  load-bearing design calls.
 
 ## Targets
 
-- **Spec revision:** Rev K (2026-05-04).
+- **Spec:** tracks the hosted [Anthropic Compliance API
+  spec](https://platform.claude.com/docs/en/api/compliance).
 - **Python:** 3.11+.
 - **Runtime deps:** `httpx` only.
 

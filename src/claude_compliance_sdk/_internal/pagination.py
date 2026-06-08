@@ -1,6 +1,6 @@
 """Pagination primitives for the Compliance API.
 
-Two page shapes per the spec:
+The Compliance API uses two pagination shapes:
 
 * `CursorPage` — used by Activity Feed, Chats, and Messages.
   Each page payload carries ``first_id``, ``last_id``, and ``has_more``.
@@ -9,16 +9,13 @@ Two page shapes per the spec:
   payload carries an opaque ``next_page`` token; pass it back as the
   ``page`` query parameter to fetch the next page.
 
-Both page classes are plain dataclasses (no Pydantic, per CLAUDE.md)
+Both page classes are plain dataclasses (no Pydantic)
 parameterised over the item type ``T``. They are used identically by
-sync and async resources — the iteration helpers are what differ.
+sync and async resources.
 
-The `iter_all_cursor_sync` /
-`iter_all_cursor_async` /
-`iter_all_offset_sync` /
-`iter_all_offset_async` helpers drive a resource's ``.iter()``
-method: they fetch consecutive pages, build each into a typed object
-with a caller-supplied factory, and yield items one at a time.
+Each paginated resource also exposes an ``.iter()`` method that drives
+these pages for you: it fetches consecutive pages and yields items one
+at a time, so you rarely need to construct a page object yourself.
 """
 
 from __future__ import annotations

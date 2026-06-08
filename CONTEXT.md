@@ -8,7 +8,7 @@ locked design decisions are not silently revisited.
 This file is the input to architecture tools (e.g. the
 `improve-codebase-architecture` skill) and to new contributors who need
 to come up to speed quickly. Keep it short and precise. If a concept
-needs more than a paragraph, link out to an ADR under `docs/adr/`.
+needs more than a paragraph, link out to an ADR under `adr/`.
 
 ---
 
@@ -232,7 +232,7 @@ issue first.
 | 16  | Response dataclass parsing via `parse_with_extra(cls, body)` over `dataclasses.fields(cls)`. No per-field coercion, no nested-type recursion. See [ADR-0002](adr/0002-response-dataclass-parsing-via-dataclasses-fields.md). | 2026-05-13 | locked |
 | 17  | Hosted spec at <https://platform.claude.com/docs/en/api/compliance> is authoritative. PDF at the repo root is a point-in-time reference for diffing only and may lag behind live behaviour. | 2026-06-01 | locked |
 
-Promote any of these to a full ADR (`docs/adr/NNNN-…md`) once it acquires
+Promote any of these to a full ADR (`adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
 extended argument.
 

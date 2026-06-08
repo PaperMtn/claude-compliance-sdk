@@ -150,7 +150,7 @@ Conventions:
 - Update **README.md** if you add or rename a public surface.
 - Update **CONTEXT.md** if you introduce a new domain concept or change
   how an existing one is modelled.
-- Architecture decisions worth preserving go under `docs/adr/` as a
+- Architecture decisions worth preserving go under `adr/` as a
   numbered ADR (`0001-some-decision.md`). Phase-0 decisions are summarised
   in **CONTEXT.md**; promote them to ADRs once they have a real follow-up
   discussion.

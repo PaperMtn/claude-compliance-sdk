@@ -7,15 +7,17 @@ The Compliance API requires an Enterprise plan, and primary owners can enable it
 > **Unofficial.** This is a community-maintained project. It is not
 > produced, endorsed, or supported by Anthropic.
 
+📚 **[Read the documentation](https://papermtn.github.io/claude-compliance-sdk/)** — full API reference, generated from the source.
+
 ## Features
 
 - Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, and Organisations.
 - Full sync + async parity. Every resource method is available on both `ComplianceClient` and `AsyncComplianceClient` under the same name.
-- Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future spec revision adding a field cannot break the SDK.
+- Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future API revision adding a field cannot break the SDK.
 - Built-in retry with exponential backoff that honours `Retry-After`, plus a client-side sliding-window rate limiter that matches the server's 600 RPM cap.
 - Streamed downloads with a configurable memory ceiling — switch from eager bytes to `download_to_file()` or `download_stream()` for anything larger.
-- Typed exception hierarchy. Every spec error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
-- Targets spec revision **Rev K** (2026-05-04).
+- Typed exception hierarchy. Every API error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
+- Tracks the hosted [Anthropic Compliance API spec](https://platform.claude.com/docs/en/api/compliance).
 
 ## Requirements
 Python 3.11+.
@@ -192,7 +194,7 @@ are not.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev setup, branch model,
 coding conventions, and PR checklist. Architecture decisions worth
-preserving live as numbered ADRs under [`docs/adr/`](docs/adr/).
+preserving live as numbered ADRs under [`adr/`](adr/).
 
 ## License
 

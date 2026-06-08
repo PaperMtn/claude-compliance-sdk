@@ -4,9 +4,9 @@ Wraps three Compliance API endpoints:
 
 * ``GET /v1/compliance/apps/chats`` — cursor-paginated chat metadata
   list. ``user_ids[]`` is **required** and must carry 1–10 IDs; the
-  SDK validates the length client-side (cheap input-shape check, per
-  CONTEXT.md decision 14) and raises `ValueError` outside that
-  range without touching the network.
+  SDK validates the length client-side (a cheap input-shape check)
+  and raises `ValueError` outside that range without touching the
+  network.
 * ``GET /v1/compliance/apps/chats/{claude_chat_id}/messages`` — the
   only way to fetch a single chat. Returns the chat metadata
   alongside one cursor-paginated page of messages. Exposed via two
@@ -22,7 +22,7 @@ Wraps three Compliance API endpoints:
   delete. The chat record persists with ``deleted_at`` populated
   (soft-delete data model) but cannot be undone. Returns ``None``.
 
-Note that the spec (Rev K) does not expose a separate
+Note that the API does not expose a separate
 ``GET /v1/compliance/apps/chats/{id}`` single-fetch endpoint, so
 `get` uses the messages endpoint and reads the chat fields from
 its response.
@@ -71,12 +71,12 @@ class Chat:
             the chat is still active. The server keeps the chat
             record after a delete; this field marks it.
         organization_uuid: Organisation UUID (alternate identifier),
-            or ``None`` when not provided by the spec response.
+            or ``None`` when the API omits it.
         project_id: Owning project's tagged ID, or ``None`` for
             standalone chats.
         user: Creator info (``id``, ``email_address``) or ``None``.
-            Kept as a raw dict per ADR-0002.
-        extra: Any additional fields the spec adds in a later revision.
+            Kept as a raw dict.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str
@@ -110,8 +110,8 @@ class Message:
     """A single message within a chat.
 
     Content blocks, file attachments, and artifact references are
-    stored as raw dicts per ADR-0002 — typed unions for those nested
-    shapes can land later if they earn their keep.
+    stored as raw dicts — typed unions for those nested shapes can
+    land later if they earn their keep.
 
     Attributes:
         id: Tagged message identifier (``claude_chat_msg_...``).
@@ -123,7 +123,7 @@ class Message:
             or ``None`` when the message has no files.
         artifacts: Artifact references generated alongside an
             assistant message, or ``None`` when there are none.
-        extra: Any additional fields the spec adds in a later revision.
+        extra: Any additional fields the API adds in a later revision.
     """
 
     id: str
@@ -179,7 +179,7 @@ class ChatMessagesPage:
 
 
 def _validate_user_ids(user_ids: Sequence[str]) -> None:
-    """Enforce the spec's 1–10 length on ``user_ids[]``.
+    """Enforce the API's 1–10 length on ``user_ids[]``.
 
     Cheap input-shape check that runs locally; the server still
     enforces and the SDK only labels.
@@ -293,7 +293,7 @@ class Chats:
 
         Args:
             user_ids: **Required.** 1–10 user IDs to filter on. The
-                spec rejects requests outside this range; the SDK
+                API rejects requests outside this range; the SDK
                 raises `ValueError` locally before sending.
             organization_ids: Optional org filter.
             project_ids: Optional project filter.
@@ -422,7 +422,7 @@ class Chats:
 
         Args:
             chat_id: Tagged chat identifier.
-            limit: Per-page maximum (max 1000 per spec). Omit to let
+            limit: Per-page maximum (max 1000). Omit to let
                 the server return the full set in one response.
         """
         after_id: str | None = None
@@ -434,7 +434,7 @@ class Chats:
             after_id = result.messages.last_id
 
     def delete(self, chat_id: str) -> None:
-        """Delete a chat (per spec: marks ``deleted_at`` and is irreversible).
+        """Delete a chat (marks ``deleted_at``; irreversible).
 
         Returns ``None`` on success; the server's confirmation payload
         is discarded.

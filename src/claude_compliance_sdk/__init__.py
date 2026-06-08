@@ -12,8 +12,7 @@ Public surface:
 The two clients expose the same resource group attributes
 (``activities``, ``chats``, ``files``, ``generated_files``, ``artifacts``,
 ``projects``, ``project_documents``, ``organizations``, ``roles``,
-``groups``) and the same method names on each group. Method bodies
-land in Phase 3 (per-resource implementations).
+``groups``) and the same method names on each group.
 """
 
 from claude_compliance_sdk._internal.pagination import (

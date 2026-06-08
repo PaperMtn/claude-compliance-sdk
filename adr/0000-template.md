@@ -7,7 +7,7 @@
 
 > **How to use this template**
 >
-> Copy this file to `docs/adr/NNNN-short-slug.md` where `NNNN` is the
+> Copy this file to `adr/NNNN-short-slug.md` where `NNNN` is the
 > next four-digit number. Fill in each section, then delete this blockquote
 > and any unused optional sections. Keep the file short — an ADR is the
 > *argument*, not a manual. If it grows past ~2 pages, you are probably

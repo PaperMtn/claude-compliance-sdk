@@ -251,3 +251,5 @@ downloads/
 2026-05-04 Anthropic Compliance API docs.pdf
 local_test
 .envrc
+gh_issues
+blog-post*.md

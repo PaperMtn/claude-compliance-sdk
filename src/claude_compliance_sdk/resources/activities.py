@@ -51,7 +51,7 @@ class Activity:
     Per-type fields (for example ``claude_chat_id`` on a
     ``claude_chat_created`` activity) land in `extra` rather than
     on the dataclass so the SDK does not have to track the full list
-    of activity types — that set grows over time and stays in the spec.
+    of activity types — that set grows over time.
 
     Attributes:
         id: Unique identifier (``activity_...``).
@@ -70,7 +70,7 @@ class Activity:
             on ``actor["type"]``. Kept as a dict because the union grows
             over time.
         extra: Activity-type-specific fields preserved verbatim from the
-            response, plus any new top-level fields the spec adds later.
+            response, plus any new top-level fields the API adds later.
     """
 
     id: str
@@ -105,7 +105,7 @@ def _build_query_params(
     Array filters (``organization_ids[]``, ``actor_ids[]``,
     ``activity_types[]``) use a list value so httpx emits one repeat
     per item. Time filters use the dotted form (``created_at.gte`` etc.)
-    the spec requires. ``None`` values are dropped.
+    the API requires. ``None`` values are dropped.
     """
     params: dict[str, Any] = {}
     for name, values in (

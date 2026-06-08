@@ -1,9 +1,9 @@
 """Synchronous entry point for the Anthropic Compliance SDK.
 
-The full request, retry, rate-limit, and pagination machinery is added
-in Phase 2. This module currently exposes only the public construction
-surface: the ``ComplianceClient`` class with its configuration knobs
-and ten resource group attributes.
+Exposes the ``ComplianceClient`` class: its configuration knobs and the
+ten resource group attributes through which every endpoint is reached.
+The request, retry, rate-limit, and pagination machinery lives in the
+transport and pagination layers under ``_internal``.
 """
 
 import os
