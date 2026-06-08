@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING:** scope failures are now classified on HTTP 403, matching
+  the live API. `InsufficientScopeError` is a subclass of
+  `PermissionDeniedError` (403), not `AuthenticationError` (401); a 401
+  is always `InvalidAPIKeyError`. Callers that caught
+  `AuthenticationError` to handle scope problems must catch
+  `PermissionDeniedError` (or `InsufficientScopeError`). See ADR-0003.
+  (#8)
 - **Documentation** — reworked the generated API-reference site for an
   end-user audience: stripped internal references (project phases, ADR
   numbers, `CONTEXT.md` / `CLAUDE.md`, the pinned spec revision) out of

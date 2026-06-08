@@ -198,8 +198,8 @@ def test_json_body_sent(sync_transport: SyncTransport, httpx_mock: HTTPXMock) ->
             InvalidAPIKeyError,
         ),
         (
-            401,
-            "authentication_error",
+            403,
+            "permission_error",
             "The API key provided does not have the `read:compliance_activities` scope.",
             InsufficientScopeError,
         ),
@@ -234,7 +234,7 @@ async def test_async_error_mapping(async_transport: AsyncTransport, httpx_mock: 
     httpx_mock.add_response(
         url=f"{BASE_URL}{PATH}",
         status_code=401,
-        json={"error": {"type": "authentication_error", "message": "Missing scope."}},
+        json={"error": {"type": "authentication_error", "message": "Invalid API key."}},
     )
     with pytest.raises(AuthenticationError):
         await async_transport.request("GET", PATH)

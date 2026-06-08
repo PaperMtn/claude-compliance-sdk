@@ -16,10 +16,12 @@ Each `APIError` instance carries the HTTP status code, the
 `from_response` from the transport layer to build the
 right subclass from an HTTP response.
 
-The 401 split is intentional. The server is the source of truth — the
-client only labels a 401 as `InvalidAPIKeyError` or
-`InsufficientScopeError` for ergonomics, by looking for ``scope``
-or ``permission`` in the error message.
+The server is the source of truth — the client only labels. A 401 is
+an invalid or revoked key (`InvalidAPIKeyError`). Scope failures come
+back as 403 ``permission_error``; the client refines those into
+`InsufficientScopeError` (a subclass of `PermissionDeniedError`) by
+matching ``error.type`` or a ``scope``/``permission`` hint in the
+message.
 
 Example:
     ```python
@@ -150,9 +152,9 @@ class APIError(ComplianceClientError):
         if status_code == 400:
             klass: type[APIError] = BadRequestError
         elif status_code == 401:
-            klass = _classify_authentication(error_message)
+            klass = InvalidAPIKeyError
         elif status_code == 403:
-            klass = PermissionDeniedError
+            klass = _classify_permission(error_type, error_message)
         elif status_code == 404:
             klass = NotFoundError
         elif status_code == 409:
@@ -190,11 +192,11 @@ class BadRequestError(APIError):
 
 
 class AuthenticationError(APIError):
-    """HTTP 401 — base class for authentication failures.
+    """HTTP 401 — the request was not authenticated.
 
-    The SDK refines a 401 into `InvalidAPIKeyError` or
-    `InsufficientScopeError` by inspecting ``error.message``.
-    Catch this class to handle either case uniformly.
+    The only documented 401 body is an invalid or revoked key, surfaced
+    as `InvalidAPIKeyError`. Scope failures are **not** 401s — the API
+    returns those as 403 (see `InsufficientScopeError`).
     """
 
 
@@ -202,12 +204,17 @@ class InvalidAPIKeyError(AuthenticationError):
     """HTTP 401 where the API key itself is invalid or revoked."""
 
 
-class InsufficientScopeError(AuthenticationError):
-    """HTTP 401 where the key is valid but lacks a required scope."""
-
-
 class PermissionDeniedError(APIError):
     """HTTP 403 — the caller is authenticated but not permitted."""
+
+
+class InsufficientScopeError(PermissionDeniedError):
+    """HTTP 403 where the key is valid but lacks a required scope.
+
+    The Compliance API returns scope failures as 403 with
+    ``error.type: "permission_error"``. Catch `PermissionDeniedError`
+    to handle any 403, or this class for the scope-specific case.
+    """
 
 
 class NotFoundError(APIError):
@@ -342,13 +349,15 @@ def _extract_error_fields(body: Any) -> tuple[str | None, str | None]:
     )
 
 
-def _classify_authentication(error_message: str | None) -> type[AuthenticationError]:
-    if error_message is None:
-        return InvalidAPIKeyError
-    lowered = error_message.lower()
+def _classify_permission(
+    error_type: str | None, error_message: str | None
+) -> type[PermissionDeniedError]:
+    if error_type == "permission_error":
+        return InsufficientScopeError
+    lowered = (error_message or "").lower()
     if "scope" in lowered or "permission" in lowered:
         return InsufficientScopeError
-    return InvalidAPIKeyError
+    return PermissionDeniedError
 
 
 def _format_summary(
