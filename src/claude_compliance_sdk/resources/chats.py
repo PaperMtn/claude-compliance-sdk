@@ -121,6 +121,9 @@ class Message:
             ``type`` discriminator (e.g. ``"text"``).
         files: User-uploaded file references attached to the message,
             or ``None`` when the message has no files.
+        generated_files: References to files the assistant produced via
+            tool use (PDFs, spreadsheets, etc.), or ``None`` when there
+            are none.
         artifacts: Artifact references generated alongside an
             assistant message, or ``None`` when there are none.
         extra: Any additional fields the API adds in a later revision.
@@ -131,6 +134,7 @@ class Message:
     created_at: str
     content: list[dict[str, Any]]
     files: list[dict[str, Any]] | None = None
+    generated_files: list[dict[str, Any]] | None = None
     artifacts: list[dict[str, Any]] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 

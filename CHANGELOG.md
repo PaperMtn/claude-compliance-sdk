@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `Message.generated_files` — assistant tool-use file outputs are now a
+  typed field on chat messages, alongside `files` and `artifacts`,
+  instead of arriving in `extra`. (#7)
+
 ### Changed
 
 - **Documentation** — reworked the generated API-reference site for an
