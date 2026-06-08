@@ -188,7 +188,15 @@ are not.
 | `timeout` | `30.0` | Per-request timeout, seconds. |
 | `max_download_bytes` | `100 * 1024 * 1024` | Eager-download cap. |
 | `max_retries` | `3` | Retry attempts on 429/5xx and connect errors. `0` disables. |
-| `rate_limit_rpm` | `600` | Client-side sliding-window cap matching the server. `0` disables. |
+| `rate_limit_rpm` | `600` | Best-effort, per-client burst smoothing. `0` disables. See the note below. |
+
+> **On `rate_limit_rpm`:** the limiter is per-client and best-effort — it
+> smooths bursts from a single client instance. The live API enforces
+> **600 RPM per parent organisation**, shared across every key and every
+> `/v1/compliance/*` endpoint, which a per-client limiter can't see. If you
+> run multiple clients under one parent, set `rate_limit_rpm` to
+> `600 / n_clients`, or set it to `0` and rely on the SDK's 429 retry
+> handling.
 
 ## Contributing
 
