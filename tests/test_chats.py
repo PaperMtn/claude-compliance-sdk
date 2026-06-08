@@ -79,6 +79,13 @@ SPEC_EXAMPLE_ASSISTANT_MESSAGE: dict[str, Any] = {
             "artifact_type": "text/markdown",
         }
     ],
+    "generated_files": [
+        {
+            "id": "claude_gen_file_abc123",
+            "filename": "dashboard_requirements.pdf",
+            "mime_type": "application/pdf",
+        }
+    ],
 }
 
 
@@ -158,6 +165,7 @@ def test_message_from_dict_user_message() -> None:
     assert message.files is not None
     assert message.files[0]["filename"] == "dashboard_mockup_v1.pdf"
     assert message.artifacts is None
+    assert message.generated_files is None
 
 
 def test_message_from_dict_assistant_message_with_artifacts() -> None:
@@ -166,6 +174,10 @@ def test_message_from_dict_assistant_message_with_artifacts() -> None:
     assert message.files is None
     assert message.artifacts is not None
     assert message.artifacts[0]["title"] == "Dashboard Requirements Draft"
+    assert message.generated_files is not None
+    assert message.generated_files[0]["filename"] == "dashboard_requirements.pdf"
+    # The typed field must own the value — it should not also leak into extra.
+    assert "generated_files" not in message.extra
 
 
 def test_chat_messages_page_from_dict_splits_chat_and_messages() -> None:
