@@ -12,6 +12,7 @@ from types import TracebackType
 from claude_compliance_sdk._internal.transport import AsyncTransport
 from claude_compliance_sdk.client import (
     API_KEY_ENV_VAR,
+    DEFAULT_ANTHROPIC_VERSION,
     DEFAULT_BASE_URL,
     DEFAULT_MAX_DOWNLOAD_BYTES,
     DEFAULT_MAX_RETRIES,
@@ -91,6 +92,7 @@ class AsyncComplianceClient:
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
         max_retries: int = DEFAULT_MAX_RETRIES,
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
+        anthropic_version: str | None = DEFAULT_ANTHROPIC_VERSION,
     ) -> None:
         resolved_key = api_key if api_key is not None else os.environ.get(API_KEY_ENV_VAR)
         if not resolved_key:
@@ -104,6 +106,7 @@ class AsyncComplianceClient:
         self.max_download_bytes: int = max_download_bytes
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
+        self.anthropic_version: str | None = anthropic_version
 
         self._transport: AsyncTransport = AsyncTransport(
             api_key=resolved_key,
@@ -111,6 +114,7 @@ class AsyncComplianceClient:
             timeout=timeout,
             max_retries=max_retries,
             rate_limit_rpm=rate_limit_rpm,
+            anthropic_version=anthropic_version,
         )
 
         self.activities: AsyncActivities = AsyncActivities(self._transport)

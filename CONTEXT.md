@@ -229,7 +229,10 @@ issue first.
 | 14  | `user_ids[]` length on `GET /apps/chats` validated client-side (1–10). Other server-side rules not duplicated.                                        | 2026-05-13 | locked |
 | 15  | Concrete transports without abstract bases. ABCs deleted; resources type-hint `SyncTransport` / `AsyncTransport` directly. See [ADR-0001](adr/0001-concrete-transports-without-abstract-bases.md). | 2026-05-13 | locked |
 | 16  | Response dataclass parsing via `parse_with_extra(cls, body)` over `dataclasses.fields(cls)`. No per-field coercion, no nested-type recursion. See [ADR-0002](adr/0002-response-dataclass-parsing-via-dataclasses-fields.md). | 2026-05-13 | locked |
-| 17  | Hosted spec at <https://platform.claude.com/docs/en/api/compliance> is authoritative. PDF at the repo root is a point-in-time reference for diffing only and may lag behind live behaviour. | 2026-06-01 | locked |
+| 17  | Hosted docs at <https://platform.claude.com/docs/en/manage-claude/compliance-api> are authoritative. Snapshotted to `spec-snapshots/<date>/` by `scripts/snapshot_spec.py` so upstream changes are diffable; the Rev K PDF is superseded and retained only as provenance for ADR-0003. | 2026-09-04 | locked |
+| 18  | Send `anthropic-version` on every request, default `2023-06-01`, overridable per client. Reverses the Phase-0 omission. See [ADR-0004](adr/0004-send-anthropic-version-header.md). | 2026-09-04 | locked |
+| 19  | `organizations.list()` returns `OffsetPage[Organization]` with a sibling `iter()`, matching every other paginated resource. Breaking change from the bare `list[Organization]`, taken because the endpoint is now paginated and the old shape silently truncated past 1,000 organisations. | 2026-09-04 | locked |
+| 20  | Session and chat message `content` blocks stay `list[dict[str, Any]]` rather than typed block dataclasses, so unrecognised block types pass through untouched. | 2026-09-04 | locked |
 
 Promote any of these to a full ADR (`adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
@@ -253,13 +256,20 @@ hosted docs, update it here and take a fresh snapshot.
 - **Two pagination styles:** cursor (`after_id` / `before_id`) on
   Activity Feed, Chats, Messages; opaque `page` token on everything
   else.
-- **`GET /apps/chats`** requires `user_ids[]`, length 1–10.
+- **`GET /apps/chats`** takes an optional `user_ids[]`, length 1–10.
+  Omitting it queries the whole parent organisation, which combined with
+  `order_by=updated_at` is the recommended incremental-export shape.
+  `user_ids[]` with any `updated_at.*` bound is rejected after
+  2026-09-22.
 - **`DELETE /apps/projects/{id}`** returns `409` when chats are still
   attached.
-- **`GET /organizations`** has no pagination; errors when the result
-  would exceed 1,000 organisations.
+- **`GET /organizations`** is offset paginated (`page` / `next_page`,
+  `limit` default and max 1,000).
 - **Error shape:** `{"error": {"type": "...", "message": "..."}}`.
-- **Request headers:** only `x-api-key` is required by the spec. The
-  Messages API `anthropic-version` header is **not** used by the
-  Compliance API — sending it routes the request to a different
-  surface and 404s the `/v1/compliance/*` paths.
+- **Request headers:** `x-api-key` and `anthropic-version` on every
+  request. The SDK sends `anthropic-version: 2023-06-01` by default,
+  overridable (or suppressible with `None`) via the client's
+  `anthropic_version` keyword. This reverses the Phase-0 decision to
+  omit the header, which was taken from a 404 observed against
+  production and is contradicted by the current docs — see
+  [ADR-0004](adr/0004-send-anthropic-version-header.md).

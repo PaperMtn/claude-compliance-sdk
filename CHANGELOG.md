@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `organizations.iter()` — auto-paginating sibling to
+  `organizations.list()`, matching every other paginated resource.
+- `chats.list()` / `chats.iter()` accept `order_by` (`"created_at"` or
+  `"updated_at"`).
+- `anthropic_version` keyword on both clients, defaulting to
+  `"2023-06-01"`. Pass `None` to suppress the header.
+- `User.organization_role` — the built-in membership level, previously
+  arriving in `extra`.
+- `ProjectAttachment.md5`, `.size_bytes`, and `.updated_at` — previously
+  arriving in `extra`.
+- `scripts/snapshot_spec.py` and `spec-snapshots/<date>/` — committed
+  markdown snapshots of the hosted docs, so upstream API changes are
+  visible as a `git diff`.
+
+### Changed
+
+- **BREAKING:** `organizations.list()` returns `OffsetPage[Organization]`
+  instead of `list[Organization]`. `GET /v1/compliance/organizations` is
+  now paginated, and the old shape silently discarded every page after
+  the first. Replace `for org in client.organizations.list()` with
+  `client.organizations.iter()`, or read `.list().data` for a single
+  page.
+- **BREAKING:** the SDK now sends `anthropic-version: 2023-06-01` on
+  every request, reversing the Phase-0 decision to omit it. The hosted
+  docs require it and every published example sends it. See ADR-0004.
+- **BREAKING:** `chats.list()` and `chats.iter()` no longer require
+  `user_ids`. Omitting it queries every chat under the parent
+  organisation, which is the documented way to run an incremental
+  export. A supplied list is still validated to 1–10 entries. Field
+  order on the `Chat` and `Project` dataclasses changed as a result of
+  the nullability fixes below, which matters only if you construct them
+  positionally.
+- `Chat.model` is now `str | None`; the API returns `null` for legacy
+  chats that never had a model recorded.
+- `Chat.organization_id` and `Project.organization_id` are now optional
+  and documented as deprecated by the API in favour of
+  `organization_uuid`.
+
+### Deprecated
+
+- Combining `user_ids` with any `updated_at` bound on `chats.list()` /
+  `chats.iter()` now raises a `DeprecationWarning`. The API rejects the
+  combination with HTTP 400 after 2026-09-22; use an organisation-wide
+  `order_by="updated_at"` walk instead.
+
+### Added
+
 - `Message.generated_files` — assistant tool-use file outputs are now a
   typed field on chat messages, alongside `files` and `artifacts`,
   instead of arriving in `extra`. (#7)
