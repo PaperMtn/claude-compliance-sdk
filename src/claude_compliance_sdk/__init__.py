@@ -21,6 +21,7 @@ from claude_compliance_sdk._internal.pagination import (
     CursorPage,
     OffsetPage,
 )
+from claude_compliance_sdk._internal.rate_limit import RateLimitSnapshot
 from claude_compliance_sdk.async_client import AsyncComplianceClient
 from claude_compliance_sdk.client import ComplianceClient
 from claude_compliance_sdk.exceptions import (
@@ -122,6 +123,7 @@ __all__ = [
     "ProjectDocument",
     "ProjectDocumentMetadata",
     "RateLimitError",
+    "RateLimitSnapshot",
     "RemoteSession",
     "RemoteSessionMessage",
     "RemoteSessionTranscript",

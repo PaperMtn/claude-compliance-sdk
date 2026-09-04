@@ -41,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `activities.list()` / `iter()` accept `exclude_activity_types` (the
   inverse of `activity_types`; the server rejects passing both) and
   `order` (`"asc"` / `"desc"`).
+- `client.rate_limit_status` — the server's last reported request
+  budget, read from the `anthropic-ratelimit-*` response headers, as a
+  new public `RateLimitSnapshot`. Use `remaining` to pace your own
+  workers: the 600 rpm budget is shared across every key under the
+  parent organisation, so it accounts for traffic this client cannot
+  see.
 - `LocalSessionsUnavailableError` (subclass of `NotFoundError`) — the
   404 meaning "local sessions are off for this parent organisation",
   which does *not* mean a session is gone. Keep your queued IDs.
@@ -87,6 +93,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The client now throttles on the server's reported budget. When a
+  response says `anthropic-ratelimit-requests-remaining: 0`, the next
+  request waits for the stated reset instead of being spent to
+  discover a guaranteed 429. Honoured even when `rate_limit_rpm=0` —
+  that flag opts out of the *local* window, not the shared server
+  limit. See ADR-0007.
+- `Retry-After` is now a **floor** on the retry delay rather than
+  replacing the backoff schedule. The remote-session endpoints' second
+  rate-limit budget always answers `retry-after: 1` as a *minimum*
+  wait, so taking it literally retried three times in three seconds
+  and exhausted the retry allowance without ever waiting long enough
+  to help. A longer, realistic hint from the shared budget still
+  dominates the early attempts.
 - `OffsetPage.has_more` is now derived from `next_page` when the payload
   omits the field. The session endpoints return `next_page` with no
   `has_more`, so reading `.has_more` previously reported "no further
@@ -96,6 +115,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   evaluated is no longer retried. It depends on organisation settings
   rather than load, so the previous behaviour spent the whole retry
   budget on a failure that fails identically every time.
+
+### Changed
+
+- Retry backoff defaults moved from 0.5s base / 20s cap to **1s base /
+  60s cap**, matching the fallback the API documents for a 429 with no
+  `Retry-After` header. Retries are correspondingly slower.
 
 ### Deprecated
 

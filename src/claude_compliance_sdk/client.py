@@ -9,6 +9,7 @@ transport and pagination layers under ``_internal``.
 import os
 from types import TracebackType
 
+from claude_compliance_sdk._internal.rate_limit import RateLimitSnapshot
 from claude_compliance_sdk._internal.transport import SyncTransport
 from claude_compliance_sdk.resources.activities import Activities
 from claude_compliance_sdk.resources.artifacts import Artifacts
@@ -129,6 +130,25 @@ class ComplianceClient:
         self.projects: Projects = Projects(self._transport)
         self.remote_sessions: RemoteSessions = RemoteSessions(self._transport)
         self.roles: Roles = Roles(self._transport)
+
+    @property
+    def rate_limit_status(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, or ``None``.
+
+        Populated from the ``anthropic-ratelimit-*`` headers after the
+        first response. Useful for pacing your own workers: the budget
+        is 600 requests per minute shared across **every** key under
+        the parent organisation, so ``remaining`` reflects traffic the
+        client cannot see.
+
+        ```python
+        page = client.activities.list(limit=1)
+        status = client.rate_limit_status
+        if status and status.remaining is not None and status.remaining < 50:
+            time.sleep(5)  # Back off before the shared budget runs out.
+        ```
+        """
+        return self._transport.rate_limit
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool.

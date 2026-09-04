@@ -9,6 +9,7 @@ swap one client for the other without changing call sites.
 import os
 from types import TracebackType
 
+from claude_compliance_sdk._internal.rate_limit import RateLimitSnapshot
 from claude_compliance_sdk._internal.transport import AsyncTransport
 from claude_compliance_sdk.client import (
     API_KEY_ENV_VAR,
@@ -135,6 +136,25 @@ class AsyncComplianceClient:
         self.projects: AsyncProjects = AsyncProjects(self._transport)
         self.remote_sessions: AsyncRemoteSessions = AsyncRemoteSessions(self._transport)
         self.roles: AsyncRoles = AsyncRoles(self._transport)
+
+    @property
+    def rate_limit_status(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, or ``None``.
+
+        Populated from the ``anthropic-ratelimit-*`` headers after the
+        first response. Useful for pacing your own workers: the budget
+        is 600 requests per minute shared across **every** key under
+        the parent organisation, so ``remaining`` reflects traffic the
+        client cannot see.
+
+        ```python
+        page = client.activities.list(limit=1)
+        status = client.rate_limit_status
+        if status and status.remaining is not None and status.remaining < 50:
+            time.sleep(5)  # Back off before the shared budget runs out.
+        ```
+        """
+        return self._transport.rate_limit
 
     async def aclose(self) -> None:
         """Close the underlying async HTTP connection pool.

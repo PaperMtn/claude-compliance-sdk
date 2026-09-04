@@ -74,5 +74,6 @@ nav:
     - Roles: api/roles.md
     - Groups: api/groups.md
   - Pagination: api/pagination.md
+  - Rate limits: api/rate_limits.md
   - Errors: api/exceptions.md
   - Examples: examples.md

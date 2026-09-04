@@ -58,6 +58,14 @@ maintainer first.
 - **Message-substring error matching is confined to two local-session
   cases (ADR-0006).** Everywhere else, match on `error.type`. Do not
   extend the pattern to conditions the type can already distinguish.
+- **Rate limiting is server-led (ADR-0007).** The transport observes
+  `anthropic-ratelimit-*` on every response and waits for the reset
+  when `remaining` hits zero. `rate_limit_rpm=0` disables only the
+  *local* window. Do not add proportional throttling — `remaining` is
+  exposed via `client.rate_limit_status` so callers own that policy.
+- **`Retry-After` is a floor, not a replacement.** The remote-session
+  budget sends `1` as a minimum wait; treating it as the whole delay
+  burns the retry budget in three seconds.
 - **Admin-key local gate:** **skipped.** Do not pre-flight check the
   key prefix before calling admin-only endpoints. Let the server 401
   and surface that as `InvalidAPIKeyError` / `InsufficientScopeError`.
