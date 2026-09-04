@@ -1,7 +1,7 @@
 """Synchronous entry point for the Anthropic Compliance SDK.
 
 Exposes the ``ComplianceClient`` class: its configuration knobs and the
-ten resource group attributes through which every endpoint is reached.
+twelve resource group attributes through which every endpoint is reached.
 The request, retry, rate-limit, and pagination machinery lives in the
 transport and pagination layers under ``_internal``.
 """
@@ -16,9 +16,11 @@ from claude_compliance_sdk.resources.chats import Chats
 from claude_compliance_sdk.resources.files import Files
 from claude_compliance_sdk.resources.generated_files import GeneratedFiles
 from claude_compliance_sdk.resources.groups import Groups
+from claude_compliance_sdk.resources.local_sessions import LocalSessions
 from claude_compliance_sdk.resources.organizations import Organizations
 from claude_compliance_sdk.resources.project_documents import ProjectDocuments
 from claude_compliance_sdk.resources.projects import Projects
+from claude_compliance_sdk.resources.remote_sessions import RemoteSessions
 from claude_compliance_sdk.resources.roles import Roles
 
 DEFAULT_BASE_URL = "https://api.anthropic.com"
@@ -121,9 +123,11 @@ class ComplianceClient:
             self._transport, max_download_bytes=max_download_bytes
         )
         self.groups: Groups = Groups(self._transport)
+        self.local_sessions: LocalSessions = LocalSessions(self._transport)
         self.organizations: Organizations = Organizations(self._transport)
         self.project_documents: ProjectDocuments = ProjectDocuments(self._transport)
         self.projects: Projects = Projects(self._transport)
+        self.remote_sessions: RemoteSessions = RemoteSessions(self._transport)
         self.roles: Roles = Roles(self._transport)
 
     def close(self) -> None:

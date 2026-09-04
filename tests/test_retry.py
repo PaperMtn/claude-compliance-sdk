@@ -595,3 +595,43 @@ async def test_async_retries_529_then_succeeds(
 
     assert result == {"data": []}
     assert len(fake_async_sleep) == 1
+
+
+def test_error_retryable_false_suppresses_a_retryable_status() -> None:
+    # 503 is in the retryable set, but the local-session retention
+    # failure depends on org settings rather than load and fails the
+    # same way on every attempt.
+    policy = RetryPolicy(max_retries=3)
+    assert policy.should_retry_status(retry_index=0, method="GET", status_code=503) is True
+    assert (
+        policy.should_retry_status(
+            retry_index=0, method="GET", status_code=503, error_retryable=False
+        )
+        is False
+    )
+
+
+def test_error_retryable_none_leaves_the_status_rules_alone() -> None:
+    policy = RetryPolicy(max_retries=3)
+    assert (
+        policy.should_retry_status(
+            retry_index=0, method="GET", status_code=503, error_retryable=None
+        )
+        is True
+    )
+
+
+def test_should_retry_header_outranks_error_retryable() -> None:
+    # The server's explicit signal is part of the API contract, so it
+    # wins over the SDK's message-based refinement in both directions.
+    policy = RetryPolicy(max_retries=3)
+    assert (
+        policy.should_retry_status(
+            retry_index=0,
+            method="GET",
+            status_code=503,
+            should_retry_header=True,
+            error_retryable=False,
+        )
+        is True
+    )

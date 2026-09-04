@@ -9,6 +9,9 @@ attempt. The sleep itself is the caller's responsibility — sync
 Retry semantics:
 
 * Retry on HTTP 429, 500, 502, 503, 504, 529.
+* An exception carrying ``retryable = False`` is never retried, even on
+  a status in the set above. Used where one status covers both
+  transient and permanent conditions.
 * A response's ``x-should-retry`` header overrides the status set:
   ``false`` suppresses a retry that would otherwise happen (a
   deterministic failure), ``true`` forces one — both still gated on
@@ -69,6 +72,7 @@ class RetryPolicy:
         method: str,
         status_code: int,
         should_retry_header: bool | None = None,
+        error_retryable: bool | None = None,
     ) -> bool:
         """Return ``True`` if a non-2xx response should be retried.
 
@@ -84,13 +88,22 @@ class RetryPolicy:
             should_retry_header: Parsed value of the server's
                 ``x-should-retry`` header — ``True``/``False`` when
                 present, ``None`` when absent. When set, it overrides
-                the default status set: the server's explicit signal
-                wins. Still gated on method safety.
+                everything below: the server's explicit signal wins.
+                Still gated on method safety.
+            error_retryable: The mapped exception's ``retryable``
+                marker. ``False`` suppresses a retry that the status
+                set would otherwise allow, for failures that share a
+                retryable status but are not transient — a
+                local-session 503 about retention overrides being the
+                case this exists for. Ranks below the server's header
+                and above the status set.
         """
         if retry_index >= self.max_retries:
             return False
         if should_retry_header is not None:
             return should_retry_header and method.upper() in SAFE_METHODS
+        if error_retryable is False:
+            return False
         if method.upper() not in SAFE_METHODS:
             return False
         return status_code in RETRYABLE_STATUSES

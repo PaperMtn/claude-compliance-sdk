@@ -233,6 +233,9 @@ issue first.
 | 18  | Send `anthropic-version` on every request, default `2023-06-01`, overridable per client. Reverses the Phase-0 omission. See [ADR-0004](adr/0004-send-anthropic-version-header.md). | 2026-09-04 | locked |
 | 19  | `organizations.list()` returns `OffsetPage[Organization]` with a sibling `iter()`, matching every other paginated resource. Breaking change from the bare `list[Organization]`, taken because the endpoint is now paginated and the old shape silently truncated past 1,000 organisations. | 2026-09-04 | locked |
 | 20  | Session and chat message `content` blocks stay `list[dict[str, Any]]` rather than typed block dataclasses, so unrecognised block types pass through untouched. | 2026-09-04 | locked |
+| 21  | Local and remote sessions are separate resource groups, not one `sessions` group with a `kind` switch. Their endpoints, filters, payloads, rate limits, and error catalogues all differ. See [ADR-0005](adr/0005-local-and-remote-sessions-are-separate-resource-groups.md). | 2026-09-04 | locked |
+| 22  | Two local-session conditions are refined by **message substring**, against the API's general "match on `error.type`" advice, because the type genuinely cannot distinguish them. Confined to `LocalSessionsUnavailableError` and `LocalSessionsRetentionUnavailableError`. See [ADR-0006](adr/0006-message-based-error-refinement-for-local-sessions.md). | 2026-09-04 | locked |
+| 23  | `APIError.retryable` is a class-level marker (`None` = use the status rules, `False` = never retry). Ranks below the server's `x-should-retry` header and above the status set. | 2026-09-04 | locked |
 
 Promote any of these to a full ADR (`adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
@@ -265,6 +268,13 @@ hosted docs, update it here and take a fresh snapshot.
   attached.
 - **`GET /organizations`** is offset paginated (`page` / `next_page`,
   `limit` default and max 1,000).
+- **Sessions** split into two families: local (`/apps/sessions/local`,
+  `clls_`, sessions on users' machines — Cowork, Claude Code, Claude
+  Science, Claude for M365) and remote (`/apps/sessions/remote`,
+  `cse_`, Cowork on claude.ai web/mobile). Both are read-only, page
+  with `page` / `next_page`, and return **no `has_more`**. The remote
+  endpoints carry a second rate-limit budget on top of the shared 600
+  rpm.
 - **Error shape:** `{"error": {"type": "...", "message": "..."}}`.
 - **Request headers:** `x-api-key` and `anthropic-version` on every
   request. The SDK sends `anthropic-version: 2023-06-01` by default,

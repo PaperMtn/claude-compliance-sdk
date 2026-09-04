@@ -66,6 +66,8 @@ nav:
     - Projects: api/projects.md
     - Project documents: api/project_documents.md
     - Chats: api/chats.md
+    - Local sessions: api/local_sessions.md
+    - Remote sessions: api/remote_sessions.md
     - Files: api/files.md
     - Generated files: api/generated_files.md
     - Artifacts: api/artifacts.md

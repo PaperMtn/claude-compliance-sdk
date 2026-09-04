@@ -36,6 +36,8 @@ from claude_compliance_sdk.exceptions import (
     InsufficientScopeError,
     InternalServerError,
     InvalidAPIKeyError,
+    LocalSessionsRetentionUnavailableError,
+    LocalSessionsUnavailableError,
     NotFoundError,
     PermissionDeniedError,
     RateLimitError,
@@ -45,9 +47,20 @@ from claude_compliance_sdk.resources.chats import Chat, ChatMessagesPage, Messag
 from claude_compliance_sdk.resources.files import File
 from claude_compliance_sdk.resources.generated_files import GeneratedFile
 from claude_compliance_sdk.resources.groups import Group, GroupMember
+from claude_compliance_sdk.resources.local_sessions import (
+    LocalSession,
+    LocalSessionMessage,
+    LocalSessionTranscript,
+    SessionUser,
+)
 from claude_compliance_sdk.resources.organizations import Organization, User
 from claude_compliance_sdk.resources.project_documents import ProjectDocument
 from claude_compliance_sdk.resources.projects import Project, ProjectAttachment, ProjectDetail
+from claude_compliance_sdk.resources.remote_sessions import (
+    RemoteSession,
+    RemoteSessionMessage,
+    RemoteSessionTranscript,
+)
 from claude_compliance_sdk.resources.roles import Permission, Role
 from claude_compliance_sdk.version import __version__
 
@@ -76,6 +89,11 @@ __all__ = [
     "InsufficientScopeError",
     "InternalServerError",
     "InvalidAPIKeyError",
+    "LocalSession",
+    "LocalSessionMessage",
+    "LocalSessionTranscript",
+    "LocalSessionsRetentionUnavailableError",
+    "LocalSessionsUnavailableError",
     "Message",
     "NotFoundError",
     "OffsetPage",
@@ -87,7 +105,11 @@ __all__ = [
     "ProjectDetail",
     "ProjectDocument",
     "RateLimitError",
+    "RemoteSession",
+    "RemoteSessionMessage",
+    "RemoteSessionTranscript",
     "Role",
+    "SessionUser",
     "User",
     "__version__",
 ]

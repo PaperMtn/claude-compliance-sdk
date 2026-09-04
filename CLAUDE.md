@@ -51,6 +51,13 @@ maintainer first.
   `organizations.list()` returns an `OffsetPage`, not a bare list; it
   was changed in 0.3.0 because the endpoint became paginated and the
   old shape silently truncated.
+- **Sessions are two resource groups, not one (ADR-0005).**
+  `local_sessions` and `remote_sessions`. Do not merge them: their
+  filters, payloads, rate limits, and errors all differ, and a merged
+  surface would make invalid parameter combinations expressible.
+- **Message-substring error matching is confined to two local-session
+  cases (ADR-0006).** Everywhere else, match on `error.type`. Do not
+  extend the pattern to conditions the type can already distinguish.
 - **Admin-key local gate:** **skipped.** Do not pre-flight check the
   key prefix before calling admin-only endpoints. Let the server 401
   and surface that as `InvalidAPIKeyError` / `InsufficientScopeError`.
@@ -70,11 +77,12 @@ For a full decision log see **CONTEXT.md** § Design decisions.
 ## Architecture in one paragraph
 
 `ComplianceClient` (sync) and `AsyncComplianceClient` (async) hold a
-single transport (`_internal/transport.py`) and expose ten resource
+single transport (`_internal/transport.py`) and expose twelve resource
 group attributes (`activities`, `chats`, `files`, `generated_files`,
 `artifacts`, `projects`, `project_documents`, `organizations`, `roles`,
-`groups`). Each resource group is a thin class that takes a transport
-in its constructor and calls `transport.request(...)`. Pagination
+`groups`, `local_sessions`, `remote_sessions`). Each resource group is
+a thin class that takes a transport in its constructor and calls
+`transport.request(...)`. Pagination
 helpers and download helpers live under `_internal/`. Errors live in
 `exceptions.py` at package root. The two clients share dataclasses and
 helpers — only the I/O layer differs.
