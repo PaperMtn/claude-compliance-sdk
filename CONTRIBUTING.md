@@ -130,8 +130,8 @@ poetry run mypy src/claude_compliance_sdk
 Conventions:
 
 - Unit tests use `pytest-httpx` to mock the API. Build fixtures from real
-  response shapes (see the spec PDF in the repo root) rather than
-  inventing them.
+  response shapes (lift them from the response examples in
+  `spec-snapshots/<date>/`) rather than inventing them.
 - Async tests use `pytest-asyncio` in `auto` mode — just write
   `async def test_…` and it works.
 - Integration tests are marked `@pytest.mark.integration` and require
@@ -141,6 +141,38 @@ Conventions:
   Codecov.
 - Test every error mapping. The most common bug in HTTP SDKs is mis-mapped
   status codes.
+
+## Tracking spec drift
+
+The hosted docs are rewritten in place: no version history, no
+changelog, and no way to ask what a page said six months ago. To make
+upstream changes visible, the docs are snapshotted as markdown into
+`spec-snapshots/<YYYY-MM-DD>/` and committed.
+
+```bash
+# Take a snapshot of the current hosted docs.
+python scripts/snapshot_spec.py
+
+# See what Anthropic changed since the last one.
+git diff --stat spec-snapshots/2026-09-04 spec-snapshots/<new>
+```
+
+Take a snapshot **before** starting work that touches an endpoint
+contract, and again when it lands, so the PR shows what moved upstream
+alongside what moved in the SDK.
+
+Notes:
+
+- The script is stdlib-only and needs no dependencies. It is not
+  covered by the pre-commit `pylint` and `mypy` hooks, which are scoped
+  to `^src/` — run them by hand if you change it.
+- `activity-types.txt` in each snapshot is the sorted list of activity
+  types (483 as of 2026-09-04). New types ship without announcement, so
+  this file is the quickest way to spot them.
+- The activities reference page is ~3 MB in full and is truncated at
+  its `## Returns` heading, because everything below is a per-type
+  response schema that the SDK does not model. Without the truncation
+  it would trip the `check-added-large-files` hook.
 
 ## Documentation
 
@@ -173,6 +205,8 @@ Before opening a PR:
       in an issue first).
 - [ ] Docstrings on new public surfaces.
 - [ ] Commit subjects follow the Conventional Commits format above.
+- [ ] If the change touches an endpoint contract, a fresh
+      `spec-snapshots/` entry is included.
 
 ## Reporting bugs
 

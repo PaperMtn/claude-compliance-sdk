@@ -193,13 +193,22 @@ helpers — only the I/O layer differs.
 - **PLAN.md** — phased implementation plan and current progress.
 - **CONTRIBUTING.md** — contributor-facing version of the conventions
   in this file (use that one when explaining to humans).
-- **<https://platform.claude.com/docs/en/api/compliance>** — the live
-  hosted spec. **Authoritative** when CONTEXT.md or the PDF disagrees.
-  Updated as Anthropic ships changes; the PDF lags.
+- **<https://platform.claude.com/docs/en/manage-claude/compliance-api>**
+  — the live hosted docs. **Authoritative** whenever anything else
+  disagrees. Rewritten in place as Anthropic ships changes, with no
+  version history of its own.
+- **`spec-snapshots/<date>/`** — committed markdown snapshots of the
+  hosted docs, taken by `scripts/snapshot_spec.py`. Use the newest
+  snapshot for response shapes and parameter lists, and
+  `git diff` between two snapshots to see what changed upstream. Each
+  directory has a `MANIFEST.md` with source URLs and checksums.
+  `activity-types.txt` is the sorted activity-type enum.
 - **`2026-05-04 Anthropic Compliance API docs.pdf`** — point-in-time
-  spec export (Rev K). Useful as a stable reference for diffing, but
-  may not match current live API behaviour. When the PDF and the
-  hosted spec disagree, the hosted spec wins.
+  spec export (Rev K), **superseded** by `spec-snapshots/`. It is
+  gitignored, so only the maintainer has it, and it now predates
+  sessions, the settings endpoint, the project-attachments rename,
+  organizations pagination, and the current key model. Do not use it
+  as a reference; it is retained only as provenance for ADR-0003.
 - **`adr/`** — architecture decisions worth preserving past a single
   PR. Kept in the repo for contributors; not published to the docs
   site.
