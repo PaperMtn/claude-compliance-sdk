@@ -53,9 +53,22 @@ from claude_compliance_sdk.resources.local_sessions import (
     LocalSessionTranscript,
     SessionUser,
 )
-from claude_compliance_sdk.resources.organizations import Organization, User
-from claude_compliance_sdk.resources.project_documents import ProjectDocument
-from claude_compliance_sdk.resources.projects import Project, ProjectAttachment, ProjectDetail
+from claude_compliance_sdk.resources.organizations import (
+    ComplianceApiKey,
+    Organization,
+    OrganizationSettings,
+    User,
+)
+from claude_compliance_sdk.resources.project_documents import (
+    ProjectDocument,
+    ProjectDocumentMetadata,
+)
+from claude_compliance_sdk.resources.projects import (
+    Project,
+    ProjectAttachment,
+    ProjectCollaborator,
+    ProjectDetail,
+)
 from claude_compliance_sdk.resources.remote_sessions import (
     RemoteSession,
     RemoteSessionMessage,
@@ -77,6 +90,7 @@ __all__ = [
     "BadRequestError",
     "Chat",
     "ChatMessagesPage",
+    "ComplianceApiKey",
     "ComplianceClient",
     "ComplianceClientError",
     "ConflictError",
@@ -98,12 +112,15 @@ __all__ = [
     "NotFoundError",
     "OffsetPage",
     "Organization",
+    "OrganizationSettings",
     "Permission",
     "PermissionDeniedError",
     "Project",
     "ProjectAttachment",
+    "ProjectCollaborator",
     "ProjectDetail",
     "ProjectDocument",
+    "ProjectDocumentMetadata",
     "RateLimitError",
     "RemoteSession",
     "RemoteSessionMessage",

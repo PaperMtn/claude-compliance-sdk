@@ -275,6 +275,12 @@ hosted docs, update it here and take a fresh snapshot.
   with `page` / `next_page`, and return **no `has_more`**. The remote
   endpoints carry a second rate-limit budget on top of the shared 600
   rpm.
+- **`GET /organizations/{id}/settings`** returns the *enforced* state,
+  with rows an organisation's admins cannot change **omitted**. A
+  missing row is "not controllable", not "off". Requires
+  `read:compliance_org_data` since `read:compliance_org_settings` was
+  retired 2026-06-30. Its `organization_id` is a bare UUID, unlike the
+  `org_`-prefixed form on activity, chat, and project records.
 - **Error shape:** `{"error": {"type": "...", "message": "..."}}`.
 - **Request headers:** `x-api-key` and `anthropic-version` on every
   request. The SDK sends `anthropic-version: 2023-06-01` by default,

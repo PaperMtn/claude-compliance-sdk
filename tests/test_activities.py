@@ -101,6 +101,8 @@ def test_build_params_returns_empty_dict_when_all_none() -> None:
         organization_ids=None,
         actor_ids=None,
         activity_types=None,
+        exclude_activity_types=None,
+        order=None,
         created_at_gte=None,
         created_at_gt=None,
         created_at_lte=None,
@@ -117,6 +119,8 @@ def test_build_params_serialises_array_filters_with_brackets() -> None:
         organization_ids=["org_a", "org_b"],
         actor_ids=["user_x"],
         activity_types=["claude_chat_created"],
+        exclude_activity_types=None,
+        order=None,
         created_at_gte=None,
         created_at_gt=None,
         created_at_lte=None,
@@ -137,6 +141,8 @@ def test_build_params_drops_empty_arrays() -> None:
         organization_ids=[],
         actor_ids=None,
         activity_types=None,
+        exclude_activity_types=None,
+        order=None,
         created_at_gte=None,
         created_at_gt=None,
         created_at_lte=None,
@@ -153,6 +159,8 @@ def test_build_params_uses_dotted_form_for_time_filters() -> None:
         organization_ids=None,
         actor_ids=None,
         activity_types=None,
+        exclude_activity_types=None,
+        order=None,
         created_at_gte="2025-01-01T00:00:00Z",
         created_at_gt="2025-01-02T00:00:00Z",
         created_at_lte="2025-12-31T23:59:59Z",
@@ -174,6 +182,8 @@ def test_build_params_includes_cursor_and_limit() -> None:
         organization_ids=None,
         actor_ids=None,
         activity_types=None,
+        exclude_activity_types=None,
+        order=None,
         created_at_gte=None,
         created_at_gt=None,
         created_at_lte=None,
@@ -253,6 +263,8 @@ def test_list_sends_filters_as_query_params(
     sync_client.activities.list(
         actor_ids=["user_a", "user_b"],
         activity_types=["claude_chat_created"],
+        exclude_activity_types=None,
+        order=None,
         created_at_gte="2025-01-01T00:00:00Z",
         limit=50,
     )
@@ -445,3 +457,76 @@ def _activity(id_: str) -> dict[str, Any]:
         "organization_uuid": "abcdef01-2345-6789-abcd-0123456789ab",
         "actor": {"type": "user_actor", "user_id": "user_test"},
     }
+
+
+# ---------------------------------------------------------------------------
+# exclude_activity_types[] and order
+# ---------------------------------------------------------------------------
+
+
+def test_list_sends_exclude_activity_types(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=(
+            f"{BASE_URL}{ACTIVITIES_PATH}"
+            "?exclude_activity_types%5B%5D=claude_chat_viewed"
+            "&exclude_activity_types%5B%5D=claude_file_viewed"
+        ),
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    sync_client.activities.list(exclude_activity_types=["claude_chat_viewed", "claude_file_viewed"])
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert request.url.params.get_list("exclude_activity_types[]") == [
+        "claude_chat_viewed",
+        "claude_file_viewed",
+    ]
+
+
+def test_list_sends_order(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{ACTIVITIES_PATH}?order=asc",
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    sync_client.activities.list(order="asc")
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert request.url.params["order"] == "asc"
+
+
+def test_iter_carries_order_and_exclusions_across_pages(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{ACTIVITIES_PATH}?exclude_activity_types%5B%5D=sso_login_succeeded&order=asc",
+        json={
+            "data": [SPEC_EXAMPLE_ACTIVITY],
+            "has_more": True,
+            "first_id": "a1",
+            "last_id": "a1",
+        },
+    )
+    httpx_mock.add_response(
+        url=(
+            f"{BASE_URL}{ACTIVITIES_PATH}"
+            "?exclude_activity_types%5B%5D=sso_login_succeeded&order=asc&after_id=a1"
+        ),
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    list(sync_client.activities.iter(exclude_activity_types=["sso_login_succeeded"], order="asc"))
+    for request in httpx_mock.get_requests():
+        assert request.url.params["order"] == "asc"
+
+
+async def test_async_list_sends_order(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{ACTIVITIES_PATH}?order=desc",
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    await async_client.activities.list(order="desc")
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert request.url.params["order"] == "desc"
