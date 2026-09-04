@@ -5,5 +5,7 @@
       members:
         - Organization
         - User
+        - OrganizationSettings
+        - ComplianceApiKey
         - Organizations
         - AsyncOrganizations

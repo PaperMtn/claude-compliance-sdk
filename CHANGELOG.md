@@ -23,6 +23,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `content` blocks stay raw dicts so block types that have not shipped
   yet pass through untouched. See ADR-0005 for why the two families are
   separate groups.
+- `organizations.get_settings(organization_id)` — the effective
+  settings in force for one linked organisation, for attesting that
+  retention windows, redaction, SSO enforcement, and the IP allowlist
+  match your baseline without Console access. New types
+  `OrganizationSettings` and `ComplianceApiKey`. Setting rows stay raw
+  dicts keyed on `type`; there are 50+ names and the list grows. Note
+  that a **missing** row means "administrators here cannot change it",
+  not "off".
+- `projects.list_collaborators()` / `iter_collaborators()` — the users,
+  groups, organisation-wide grants, and organisation-role grants on a
+  project, as a four-way union discriminated on
+  `ProjectCollaborator.type`.
+- `project_documents.get_metadata(document_id)` — a document's
+  metadata without its body, so enumerating documents no longer means
+  downloading every one. New type `ProjectDocumentMetadata`.
+- `activities.list()` / `iter()` accept `exclude_activity_types` (the
+  inverse of `activity_types`; the server rejects passing both) and
+  `order` (`"asc"` / `"desc"`).
 - `LocalSessionsUnavailableError` (subclass of `NotFoundError`) — the
   404 meaning "local sessions are off for this parent organisation",
   which does *not* mean a session is gone. Keep your queued IDs.

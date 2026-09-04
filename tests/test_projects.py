@@ -27,6 +27,7 @@ from claude_compliance_sdk.resources.projects import (
     PROJECTS_PATH,
     Project,
     ProjectAttachment,
+    ProjectCollaborator,
     ProjectDetail,
     _build_attachments_params,
     _build_list_params,
@@ -541,3 +542,149 @@ def _project(id_: str) -> dict[str, Any]:
         **SPEC_EXAMPLE_PROJECT,
         "id": id_,
     }
+
+
+# ---------------------------------------------------------------------------
+# .list_collaborators() / .iter_collaborators()
+# ---------------------------------------------------------------------------
+
+COLLAB_USER: dict[str, Any] = {
+    "type": "user",
+    "role": "owner",
+    "granted_at": "2026-04-10T08:09:10Z",
+    "user_id": "user_01XyDMpzjS89pFZXqSFUBDr6",
+}
+COLLAB_GROUP: dict[str, Any] = {
+    "type": "group",
+    "role": "editor",
+    "granted_at": "2026-04-11T08:09:10Z",
+    "group_id": "rbac_group_01P9qRsTuVwXyZa2BcDeFgHjK",
+}
+COLLAB_ORG: dict[str, Any] = {
+    "type": "organization",
+    "role": "viewer",
+    "granted_at": "2026-04-12T08:09:10Z",
+}
+COLLAB_ORG_ROLE: dict[str, Any] = {
+    "type": "organization_role",
+    "role": "admin",
+    "granted_at": "2026-04-13T08:09:10Z",
+    "organization_role": "admin",
+}
+PROJECT_ID = "claude_proj_01KGp4eZNug9ri4kE35RSppq"
+
+
+def _collaborators_url() -> str:
+    return f"{BASE_URL}{PROJECTS_PATH}/{PROJECT_ID}/collaborators"
+
+
+def test_collaborator_user_variant() -> None:
+    collaborator = ProjectCollaborator.from_dict(COLLAB_USER)
+    assert collaborator.type == "user"
+    assert collaborator.user_id == "user_01XyDMpzjS89pFZXqSFUBDr6"
+    assert collaborator.group_id is None
+    assert collaborator.organization_role is None
+    assert collaborator.extra == {}
+
+
+def test_collaborator_group_variant() -> None:
+    collaborator = ProjectCollaborator.from_dict(COLLAB_GROUP)
+    assert collaborator.group_id == "rbac_group_01P9qRsTuVwXyZa2BcDeFgHjK"
+    assert collaborator.user_id is None
+
+
+def test_collaborator_organization_variant_has_no_principal_id() -> None:
+    collaborator = ProjectCollaborator.from_dict(COLLAB_ORG)
+    assert (collaborator.user_id, collaborator.group_id, collaborator.organization_role) == (
+        None,
+        None,
+        None,
+    )
+
+
+def test_collaborator_organization_role_variant() -> None:
+    collaborator = ProjectCollaborator.from_dict(COLLAB_ORG_ROLE)
+    assert collaborator.organization_role == "admin"
+
+
+def test_collaborator_user_id_null_when_account_gone() -> None:
+    assert ProjectCollaborator.from_dict({**COLLAB_USER, "user_id": None}).user_id is None
+
+
+def test_collaborator_passes_through_unknown_type() -> None:
+    collaborator = ProjectCollaborator.from_dict(
+        {"type": "service_principal", "role": "viewer", "granted_at": "2026-04-14T08:09:10Z"}
+    )
+    assert collaborator.type == "service_principal"
+
+
+def test_list_collaborators_returns_offset_page(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=_collaborators_url(),
+        json={
+            "data": [COLLAB_USER, COLLAB_GROUP, COLLAB_ORG, COLLAB_ORG_ROLE],
+            "has_more": False,
+            "next_page": None,
+        },
+    )
+    page = sync_client.projects.list_collaborators(PROJECT_ID)
+    assert [c.type for c in page.data] == ["user", "group", "organization", "organization_role"]
+
+
+def test_list_collaborators_passes_limit_and_page(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{_collaborators_url()}?limit=100&page=tok",
+        json={"data": [], "has_more": False, "next_page": None},
+    )
+    sync_client.projects.list_collaborators(PROJECT_ID, limit=100, page="tok")
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert request.url.params["limit"] == "100"
+
+
+def test_iter_collaborators_walks_pages(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=_collaborators_url(),
+        json={"data": [COLLAB_USER], "has_more": True, "next_page": "p2"},
+    )
+    httpx_mock.add_response(
+        url=f"{_collaborators_url()}?page=p2",
+        json={"data": [COLLAB_GROUP], "has_more": False, "next_page": None},
+    )
+    types = [c.type for c in sync_client.projects.iter_collaborators(PROJECT_ID)]
+    assert types == ["user", "group"]
+
+
+def test_iter_collaborators_empty(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        url=_collaborators_url(), json={"data": [], "has_more": False, "next_page": None}
+    )
+    assert list(sync_client.projects.iter_collaborators(PROJECT_ID)) == []
+
+
+async def test_async_list_collaborators(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=_collaborators_url(),
+        json={"data": [COLLAB_ORG_ROLE], "has_more": False, "next_page": None},
+    )
+    page = await async_client.projects.list_collaborators(PROJECT_ID)
+    assert page.data[0].organization_role == "admin"
+
+
+async def test_async_iter_collaborators(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=_collaborators_url(),
+        json={"data": [COLLAB_USER], "has_more": False, "next_page": None},
+    )
+    types = [c.type async for c in async_client.projects.iter_collaborators(PROJECT_ID)]
+    assert types == ["user"]

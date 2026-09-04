@@ -92,6 +92,8 @@ def _build_query_params(
     organization_ids: StrList | None,
     actor_ids: StrList | None,
     activity_types: StrList | None,
+    exclude_activity_types: StrList | None,
+    order: str | None,
     created_at_gte: str | None,
     created_at_gt: str | None,
     created_at_lte: str | None,
@@ -112,10 +114,12 @@ def _build_query_params(
         ("organization_ids", organization_ids),
         ("actor_ids", actor_ids),
         ("activity_types", activity_types),
+        ("exclude_activity_types", exclude_activity_types),
     ):
         if values:
             params[f"{name}[]"] = list(values)
     for name, value in (
+        ("order", order),
         ("created_at.gte", created_at_gte),
         ("created_at.gt", created_at_gt),
         ("created_at.lte", created_at_lte),
@@ -142,6 +146,8 @@ class Activities:
         organization_ids: StrList | None = None,
         actor_ids: StrList | None = None,
         activity_types: StrList | None = None,
+        exclude_activity_types: StrList | None = None,
+        order: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -158,6 +164,18 @@ class Activities:
             actor_ids: Filter to activities by any of these actor user
                 IDs.
             activity_types: Filter to activities of any of these types.
+                Cannot be combined with ``exclude_activity_types``;
+                the server rejects that pairing.
+            exclude_activity_types: Filter *out* activities of any of
+                these types. Cannot be combined with
+                ``activity_types``.
+            order: Sort direction by ``created_at`` — ``"desc"``
+                (server default, newest first) or ``"asc"``. With
+                ``asc`` plus ``after_id`` for incremental sync, note
+                that late-arriving rows behind the cursor are skipped;
+                re-poll an overlapping ``created_at.gte`` window and
+                deduplicate on ``id`` if you need at-least-once
+                delivery.
             created_at_gte: ``created_at >= value`` (RFC 3339).
             created_at_gt: ``created_at > value`` (RFC 3339).
             created_at_lte: ``created_at <= value`` (RFC 3339).
@@ -179,6 +197,8 @@ class Activities:
             organization_ids=organization_ids,
             actor_ids=actor_ids,
             activity_types=activity_types,
+            exclude_activity_types=exclude_activity_types,
+            order=order,
             created_at_gte=created_at_gte,
             created_at_gt=created_at_gt,
             created_at_lte=created_at_lte,
@@ -196,6 +216,8 @@ class Activities:
         organization_ids: StrList | None = None,
         actor_ids: StrList | None = None,
         activity_types: StrList | None = None,
+        exclude_activity_types: StrList | None = None,
+        order: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -212,6 +234,8 @@ class Activities:
             organization_ids=organization_ids,
             actor_ids=actor_ids,
             activity_types=activity_types,
+            exclude_activity_types=exclude_activity_types,
+            order=order,
             created_at_gte=created_at_gte,
             created_at_gt=created_at_gt,
             created_at_lte=created_at_lte,
@@ -237,6 +261,8 @@ class AsyncActivities:
         organization_ids: StrList | None = None,
         actor_ids: StrList | None = None,
         activity_types: StrList | None = None,
+        exclude_activity_types: StrList | None = None,
+        order: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -250,6 +276,8 @@ class AsyncActivities:
             organization_ids=organization_ids,
             actor_ids=actor_ids,
             activity_types=activity_types,
+            exclude_activity_types=exclude_activity_types,
+            order=order,
             created_at_gte=created_at_gte,
             created_at_gt=created_at_gt,
             created_at_lte=created_at_lte,
@@ -267,6 +295,8 @@ class AsyncActivities:
         organization_ids: StrList | None = None,
         actor_ids: StrList | None = None,
         activity_types: StrList | None = None,
+        exclude_activity_types: StrList | None = None,
+        order: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -278,6 +308,8 @@ class AsyncActivities:
             organization_ids=organization_ids,
             actor_ids=actor_ids,
             activity_types=activity_types,
+            exclude_activity_types=exclude_activity_types,
+            order=order,
             created_at_gte=created_at_gte,
             created_at_gt=created_at_gt,
             created_at_lte=created_at_lte,

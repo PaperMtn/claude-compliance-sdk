@@ -4,5 +4,6 @@
     options:
       members:
         - ProjectDocument
+        - ProjectDocumentMetadata
         - ProjectDocuments
         - AsyncProjectDocuments
