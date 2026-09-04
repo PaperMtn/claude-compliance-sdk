@@ -31,7 +31,37 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_RATE_LIMIT_RPM = 600
 DEFAULT_ANTHROPIC_VERSION = "2023-06-01"
 
-API_KEY_ENV_VAR = "ANTHROPIC_COMPLIANCE_API_KEY"
+# The name the hosted docs standardise on. Checked first.
+API_KEY_ENV_VAR = "ANTHROPIC_COMPLIANCE_ACCESS_KEY"
+
+# The name this SDK shipped with in 0.1.0 and 0.2.0. Still honoured so
+# existing deployments keep working; swapping outright would break them
+# silently, which is the one failure mode worth avoiding here.
+LEGACY_API_KEY_ENV_VAR = "ANTHROPIC_COMPLIANCE_API_KEY"
+
+API_KEY_ENV_VARS = (API_KEY_ENV_VAR, LEGACY_API_KEY_ENV_VAR)
+
+
+def resolve_api_key(api_key: str | None) -> str:
+    """Return an explicit key, or find one in the environment.
+
+    Checks `API_KEY_ENV_VAR` first, then the legacy name, so a
+    deployment that sets both migrates by removing the old one.
+
+    Raises:
+        ValueError: When no key is available from either source.
+    """
+    if api_key is not None:
+        return api_key
+    for name in API_KEY_ENV_VARS:
+        value = os.environ.get(name)
+        if value:
+            return value
+    raise ValueError(
+        "No API key provided. Pass api_key=... or set the "
+        f"{API_KEY_ENV_VAR} environment variable "
+        f"(the legacy {LEGACY_API_KEY_ENV_VAR} is also honoured)."
+    )
 
 
 class ComplianceClient:
@@ -42,10 +72,13 @@ class ComplianceClient:
     need to live across requests for full benefit.
 
     Args:
-        api_key: A Compliance Access Key (``sk-ant-api01-...``) or an
-            Admin key (``sk-ant-admin01-...``). If omitted, the value
-            of the ``ANTHROPIC_COMPLIANCE_API_KEY`` environment variable
-            is used.
+        api_key: A **Compliance Access Key** (``sk-ant-api01-...``),
+            created in claude.ai, which reaches every endpoint. An
+            **Admin API key** (``sk-ant-admin01-...``) also works but
+            reaches the Activity Feed *only* — every other endpoint
+            returns 403. If omitted, ``ANTHROPIC_COMPLIANCE_ACCESS_KEY``
+            is read from the environment, falling back to the legacy
+            ``ANTHROPIC_COMPLIANCE_API_KEY``.
         base_url: Override the API host. Defaults to the Anthropic
             production host. Useful for testing against a recorded
             fixture server.
@@ -91,12 +124,7 @@ class ComplianceClient:
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
         anthropic_version: str | None = DEFAULT_ANTHROPIC_VERSION,
     ) -> None:
-        resolved_key = api_key if api_key is not None else os.environ.get(API_KEY_ENV_VAR)
-        if not resolved_key:
-            raise ValueError(
-                "No API key provided. Pass api_key=... or set the "
-                f"{API_KEY_ENV_VAR} environment variable."
-            )
+        resolved_key = resolve_api_key(api_key)
         self._api_key: str = resolved_key
         self.base_url: str = base_url
         self.timeout: float = timeout

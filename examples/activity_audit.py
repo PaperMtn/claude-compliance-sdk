@@ -4,12 +4,14 @@ Streams the Compliance API Activity Feed for the given window and
 writes one NDJSON record per activity to stdout (or to ``--out``).
 Optionally filters by actor user IDs and/or activity types.
 
-Requires an **admin key** (``sk-ant-admin01-...``) — the Activity
-Feed is the only endpoint admin keys can call.
+Works with either key type: a Compliance Access Key
+(``sk-ant-api01-...``) or an Admin API key (``sk-ant-admin01-...``),
+as long as it carries ``read:compliance_activities``. The Activity
+Feed is the only endpoint an Admin API key can reach.
 
 Usage::
 
-    export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-admin01-...
+    export ANTHROPIC_COMPLIANCE_ACCESS_KEY=sk-ant-api01-...
     python examples/activity_audit.py \\
         --since 2025-06-01T00:00:00Z \\
         --until 2025-06-30T23:59:59Z \\
