@@ -8,6 +8,7 @@ arrive in Phase 3.
 """
 
 import pytest
+from pytest_httpx import HTTPXMock
 
 from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, __version__
 from claude_compliance_sdk.client import API_KEY_ENV_VAR
@@ -94,3 +95,57 @@ def test_sync_client_supports_context_manager(fake_api_key: str) -> None:
 async def test_async_client_supports_context_manager(fake_api_key: str) -> None:
     async with AsyncComplianceClient(api_key=fake_api_key) as client:
         assert isinstance(client, AsyncComplianceClient)
+
+
+def test_rate_limit_status_is_none_before_any_request() -> None:
+    client = ComplianceClient(api_key="sk-ant-api01-test", rate_limit_rpm=0)
+    try:
+        assert client.rate_limit_status is None
+    finally:
+        client.close()
+
+
+def test_rate_limit_status_reflects_the_transport(httpx_mock: HTTPXMock) -> None:
+    # The public read-through callers use to pace their own workers.
+    client = ComplianceClient(
+        api_key="sk-ant-api01-test",
+        base_url="https://api.anthropic.test",
+        max_retries=0,
+        rate_limit_rpm=0,
+    )
+    try:
+        httpx_mock.add_response(
+            url="https://api.anthropic.test/v1/compliance/activities",
+            json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+            headers={
+                "anthropic-ratelimit-requests-limit": "600",
+                "anthropic-ratelimit-requests-remaining": "3",
+            },
+        )
+        client.activities.list()
+        status = client.rate_limit_status
+        assert status is not None
+        assert status.limit == 600
+        assert status.remaining == 3
+    finally:
+        client.close()
+
+
+async def test_async_rate_limit_status_reflects_the_transport(httpx_mock: HTTPXMock) -> None:
+    client = AsyncComplianceClient(
+        api_key="sk-ant-api01-test",
+        base_url="https://api.anthropic.test",
+        max_retries=0,
+        rate_limit_rpm=0,
+    )
+    try:
+        httpx_mock.add_response(
+            url="https://api.anthropic.test/v1/compliance/activities",
+            json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+            headers={"anthropic-ratelimit-requests-remaining": "7"},
+        )
+        await client.activities.list()
+        assert client.rate_limit_status is not None
+        assert client.rate_limit_status.remaining == 7
+    finally:
+        await client.aclose()

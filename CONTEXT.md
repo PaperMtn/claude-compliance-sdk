@@ -236,6 +236,8 @@ issue first.
 | 21  | Local and remote sessions are separate resource groups, not one `sessions` group with a `kind` switch. Their endpoints, filters, payloads, rate limits, and error catalogues all differ. See [ADR-0005](adr/0005-local-and-remote-sessions-are-separate-resource-groups.md). | 2026-09-04 | locked |
 | 22  | Two local-session conditions are refined by **message substring**, against the API's general "match on `error.type`" advice, because the type genuinely cannot distinguish them. Confined to `LocalSessionsUnavailableError` and `LocalSessionsRetentionUnavailableError`. See [ADR-0006](adr/0006-message-based-error-refinement-for-local-sessions.md). | 2026-09-04 | locked |
 | 23  | `APIError.retryable` is a class-level marker (`None` = use the status rules, `False` = never retry). Ranks below the server's `x-should-retry` header and above the status set. | 2026-09-04 | locked |
+| 24  | Server `anthropic-ratelimit-*` headers constrain the limiter; the local sliding window is only an upper bound and is honoured even when `rate_limit_rpm=0`. No proportional slowdown — `remaining` is exposed so callers set their own policy. See [ADR-0007](adr/0007-server-reported-rate-limits-over-local-token-bucket.md). | 2026-09-04 | locked |
+| 25  | `Retry-After` is a floor on the retry delay, not a replacement, because the remote-session budget sends `1` as a minimum rather than a real reset. | 2026-09-04 | locked |
 
 Promote any of these to a full ADR (`adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
@@ -254,6 +256,12 @@ hosted docs, update it here and take a fresh snapshot.
   (shared budget across all Compliance Access Keys and Admin API keys
   under the parent, across every `/v1/compliance/*` endpoint). The
   PDF says "per API key" — that's stale.
+- **Rate-limit headers:** `anthropic-ratelimit-requests-limit`,
+  `-remaining`, and `-reset` (RFC 3339) on every authenticated
+  response. The remote-session endpoints carry a **second** budget on
+  top of the shared one; its 429 always sends `retry-after: 1` as a
+  minimum, and its `anthropic-ratelimit-*` headers describe the shared
+  limit rather than the exhausted one.
 - **Two key types:** `sk-ant-api01-` (Compliance Access — most resources)
   and `sk-ant-admin01-` (Admin — only valid on the Activity Feed).
 - **Two pagination styles:** cursor (`after_id` / `before_id`) on

@@ -14,7 +14,7 @@ The Compliance API requires an Enterprise plan, and primary owners can enable it
 - Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, Organisations, and session transcripts from Cowork and Claude Code.
 - Full sync + async parity. Every resource method is available on both `ComplianceClient` and `AsyncComplianceClient` under the same name.
 - Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future API revision adding a field cannot break the SDK.
-- Built-in retry with exponential backoff that honours `Retry-After`, plus a client-side sliding-window rate limiter that matches the server's 600 RPM cap.
+- Built-in retry with exponential backoff that treats `Retry-After` as a floor, plus rate limiting driven by the server's own `anthropic-ratelimit-*` headers — the client waits for the stated reset instead of spending a request to discover a 429.
 - Streamed downloads with a configurable memory ceiling — switch from eager bytes to `download_to_file()` or `download_stream()` for anything larger.
 - Typed exception hierarchy. Every API error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
 - Tracks the hosted [Anthropic Compliance API docs](https://platform.claude.com/docs/en/manage-claude/compliance-api), snapshotted under `spec-snapshots/` so upstream changes are visible as a diff.
@@ -214,6 +214,29 @@ except FileTooLargeError as exc:
 
 User files are deletable (`.delete()`). Generated files and artifacts
 are not.
+
+## Rate limits
+
+The API allows 600 requests per minute per **parent organisation** —
+one budget shared across every key beneath it and every
+`/v1/compliance/*` endpoint. The SDK reads the server's
+`anthropic-ratelimit-*` headers on every response and waits for the
+stated reset once the budget is spent.
+
+```python
+client.activities.list(limit=100)
+
+status = client.rate_limit_status  # None until the first response
+if status and status.remaining is not None and status.remaining < 50:
+    ...  # Slow your workers: the budget is shared with other consumers.
+```
+
+`rate_limit_rpm` caps how fast this client issues requests. `0`
+disables that local window; the server-reported budget is still
+honoured, because it is not something a caller can opt out of.
+
+The remote session endpoints carry a second budget on top of the shared
+one, so a 429 there can arrive well below 600 rpm.
 
 ## Configuration
 

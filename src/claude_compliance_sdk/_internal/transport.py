@@ -19,7 +19,9 @@ import httpx
 
 from claude_compliance_sdk._internal.rate_limit import (
     AsyncSlidingWindowLimiter,
+    RateLimitSnapshot,
     SlidingWindowLimiter,
+    parse_rate_limit_headers,
 )
 from claude_compliance_sdk._internal.retry import RetryPolicy
 from claude_compliance_sdk.exceptions import (
@@ -129,6 +131,16 @@ class SyncTransport:
         self._retry_policy: RetryPolicy = RetryPolicy(max_retries=max_retries)
         self._rate_limiter: SlidingWindowLimiter = SlidingWindowLimiter(rpm=rate_limit_rpm)
 
+    @property
+    def rate_limit(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, if one was seen.
+
+        Read from the ``anthropic-ratelimit-*`` response headers. The
+        budget is shared across every key under the parent
+        organisation, so ``remaining`` accounts for other clients too.
+        """
+        return self._rate_limiter.snapshot
+
     def request(
         self,
         method: str,
@@ -176,6 +188,7 @@ class SyncTransport:
                     ),
                     stream=stream,
                 )
+                self._rate_limiter.observe(parse_rate_limit_headers(response.headers))
             except httpx.HTTPError as exc:
                 if self._retry_policy.should_retry_exception(
                     retry_index=retry_index, method=method, exc=exc
@@ -247,6 +260,16 @@ class AsyncTransport:
             rpm=rate_limit_rpm
         )
 
+    @property
+    def rate_limit(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, if one was seen.
+
+        Read from the ``anthropic-ratelimit-*`` response headers. The
+        budget is shared across every key under the parent
+        organisation, so ``remaining`` accounts for other clients too.
+        """
+        return self._rate_limiter.snapshot
+
     async def request(
         self,
         method: str,
@@ -268,6 +291,7 @@ class AsyncTransport:
                     ),
                     stream=stream,
                 )
+                self._rate_limiter.observe(parse_rate_limit_headers(response.headers))
             except httpx.HTTPError as exc:
                 if self._retry_policy.should_retry_exception(
                     retry_index=retry_index, method=method, exc=exc

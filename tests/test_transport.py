@@ -437,3 +437,68 @@ async def test_public_async_client_delegates_aclose_to_transport(
     monkeypatch.setattr(client._transport, "aclose", fake_aclose)  # noqa: SLF001
     await client.aclose()
     assert closed["count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Rate-limit header observation
+# ---------------------------------------------------------------------------
+
+
+def test_rate_limit_is_none_before_any_request(sync_transport: SyncTransport) -> None:
+    assert sync_transport.rate_limit is None
+
+
+def test_rate_limit_is_populated_from_response_headers(
+    sync_transport: SyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        json={},
+        headers={
+            "anthropic-ratelimit-requests-limit": "600",
+            "anthropic-ratelimit-requests-remaining": "417",
+            "anthropic-ratelimit-requests-reset": "2026-04-21T14:38:25Z",
+        },
+    )
+    sync_transport.request("GET", PATH)
+    snapshot = sync_transport.rate_limit
+    assert snapshot is not None
+    assert snapshot.limit == 600
+    assert snapshot.remaining == 417
+
+
+def test_rate_limit_is_observed_on_error_responses_too(
+    sync_transport: SyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    # A 403 consumes a quota unit, so its headers still matter.
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=403,
+        json={"error": {"type": "permission_error", "message": "Missing required scopes."}},
+        headers={"anthropic-ratelimit-requests-remaining": "12"},
+    )
+    with pytest.raises(InsufficientScopeError):
+        sync_transport.request("GET", PATH)
+    assert sync_transport.rate_limit is not None
+    assert sync_transport.rate_limit.remaining == 12
+
+
+def test_rate_limit_stays_none_when_headers_absent(
+    sync_transport: SyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={})
+    sync_transport.request("GET", PATH)
+    assert sync_transport.rate_limit is None
+
+
+async def test_async_rate_limit_is_populated(
+    async_transport: AsyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        json={},
+        headers={"anthropic-ratelimit-requests-remaining": "99"},
+    )
+    await async_transport.request("GET", PATH)
+    assert async_transport.rate_limit is not None
+    assert async_transport.rate_limit.remaining == 99
