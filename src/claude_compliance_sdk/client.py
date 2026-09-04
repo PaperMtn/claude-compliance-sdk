@@ -26,6 +26,7 @@ DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RATE_LIMIT_RPM = 600
+DEFAULT_ANTHROPIC_VERSION = "2023-06-01"
 
 API_KEY_ENV_VAR = "ANTHROPIC_COMPLIANCE_API_KEY"
 
@@ -85,6 +86,7 @@ class ComplianceClient:
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
         max_retries: int = DEFAULT_MAX_RETRIES,
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
+        anthropic_version: str | None = DEFAULT_ANTHROPIC_VERSION,
     ) -> None:
         resolved_key = api_key if api_key is not None else os.environ.get(API_KEY_ENV_VAR)
         if not resolved_key:
@@ -98,6 +100,7 @@ class ComplianceClient:
         self.max_download_bytes: int = max_download_bytes
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
+        self.anthropic_version: str | None = anthropic_version
 
         self._transport: SyncTransport = SyncTransport(
             api_key=resolved_key,
@@ -105,6 +108,7 @@ class ComplianceClient:
             timeout=timeout,
             max_retries=max_retries,
             rate_limit_rpm=rate_limit_rpm,
+            anthropic_version=anthropic_version,
         )
 
         self.activities: Activities = Activities(self._transport)

@@ -2,13 +2,9 @@
 
 Wraps two Compliance API endpoints:
 
-* ``GET /v1/compliance/organizations`` — list every organisation under
-  the parent organisation. **Unpaginated**: the server returns the
-  whole list in one shot, and errors with HTTP 500 when the result
-  would exceed 1,000 organisations. The SDK surfaces that error
-  untouched as `InternalServerError`
-  rather than paginating around it client-side — server is the source
-  of truth on capacity.
+* ``GET /v1/compliance/organizations`` — offset paginated list of every
+  organisation under the parent organisation. Exposed via
+  `list` (one page) and `iter` (auto-paginate).
 * ``GET /v1/compliance/organizations/{org_uuid}/users`` — offset
   paginated list of users in a given organisation. Exposed via
   `list_users` (one page) and
@@ -19,7 +15,7 @@ Example:
     from claude_compliance_sdk import ComplianceClient
 
     with ComplianceClient(api_key="sk-ant-api01-...") as client:
-        for org in client.organizations.list():
+        for org in client.organizations.iter():
             print(org.uuid, org.name)
             for user in client.organizations.iter_users(org.uuid):
                 print("  ", user.email)
@@ -70,14 +66,21 @@ class Organization:
 class User:
     """A user member of an organisation.
 
-    Role and group memberships are not part of this payload — they
-    come from the Roles and Groups resources.
+    Custom RBAC role and group memberships are not part of this
+    payload — they come from the Roles and Groups resources.
+    ``organization_role`` is a separate axis: the built-in membership
+    level within this organisation.
 
     Attributes:
         id: Tagged user identifier (``user_...``).
         full_name: Current display name.
         email: Current email address.
         created_at: RFC 3339 account creation timestamp.
+        organization_role: Built-in membership level — one of
+            ``admin``, ``billing``, ``claude_code_user``, ``developer``,
+            ``managed``, ``membership_admin``, ``owner``,
+            ``primary_owner``, ``user``. Kept as a plain string: new
+            values ship without notice.
         extra: Any additional fields the API adds in a later revision.
     """
 
@@ -85,6 +88,7 @@ class User:
     full_name: str
     email: str
     created_at: str
+    organization_role: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
@@ -97,7 +101,7 @@ def _users_path(org_uuid: str) -> str:
     return f"{ORGANIZATIONS_PATH}/{org_uuid}/users"
 
 
-def _build_user_params(*, limit: int | None, page: str | None) -> dict[str, Any]:
+def _build_page_params(*, limit: int | None, page: str | None) -> dict[str, Any]:
     params: dict[str, Any] = {}
     if limit is not None:
         params["limit"] = limit
@@ -112,28 +116,51 @@ class Organizations:
     def __init__(self, transport: SyncTransport) -> None:
         self._transport = transport
 
-    def list(self) -> list[Organization]:
-        """List every organisation under the parent organisation.
+    def list(
+        self,
+        *,
+        limit: int | None = None,
+        page: str | None = None,
+    ) -> OffsetPage[Organization]:
+        """Fetch one offset-paginated page of organisations.
 
-        The Compliance API does not paginate this endpoint and returns
-        an error when the result would exceed 1,000 organisations; that
-        error surfaces as
-        `InternalServerError` rather than
-        being papered over client-side.
+        Args:
+            limit: Maximum results per page (default 1000, max 1000).
+            page: Opaque pagination token from a prior response's
+                ``next_page``.
 
         Returns:
-            Organisations sorted by ``created_at`` ascending. May be
-            empty.
+            One `OffsetPage` of `Organization` objects, sorted by
+            ``created_at`` ascending. May be empty.
 
         Raises:
-            InternalServerError: When the server-side 1,000-org cap is
-                exceeded. The exception's ``error_message`` carries the
-                API's "Maximum Response Size Exceeded" message.
+            InsufficientScopeError: When the API key lacks
+                ``read:compliance_org_data``.
             APIError: For any other non-2xx response.
         """
-        body = self._transport.request("GET", ORGANIZATIONS_PATH)
-        raw_items = body.get("data") or []
-        return [Organization.from_dict(item) for item in raw_items]
+        body = self._transport.request(
+            "GET",
+            ORGANIZATIONS_PATH,
+            params=_build_page_params(limit=limit, page=page),
+        )
+        return OffsetPage.from_dict(body, Organization.from_dict)
+
+    def iter(
+        self,
+        *,
+        limit: int | None = None,
+    ) -> Iterator[Organization]:
+        """Iterate every organisation under the parent, auto-paginating.
+
+        Same arguments as `list` except that ``page`` is managed by the
+        iterator and therefore not accepted here.
+        """
+        return iter_all_offset_sync(
+            self._transport,
+            ORGANIZATIONS_PATH,
+            Organization.from_dict,
+            params=_build_page_params(limit=limit, page=None),
+        )
 
     def list_users(
         self,
@@ -156,7 +183,7 @@ class Organizations:
         body = self._transport.request(
             "GET",
             _users_path(org_uuid),
-            params=_build_user_params(limit=limit, page=page),
+            params=_build_page_params(limit=limit, page=page),
         )
         return OffsetPage.from_dict(body, User.from_dict)
 
@@ -175,7 +202,7 @@ class Organizations:
             self._transport,
             _users_path(org_uuid),
             User.from_dict,
-            params=_build_user_params(limit=limit, page=None),
+            params=_build_page_params(limit=limit, page=None),
         )
 
 
@@ -185,11 +212,32 @@ class AsyncOrganizations:
     def __init__(self, transport: AsyncTransport) -> None:
         self._transport = transport
 
-    async def list(self) -> list[Organization]:
+    async def list(
+        self,
+        *,
+        limit: int | None = None,
+        page: str | None = None,
+    ) -> OffsetPage[Organization]:
         """Async analogue of `list`."""
-        body = await self._transport.request("GET", ORGANIZATIONS_PATH)
-        raw_items = body.get("data") or []
-        return [Organization.from_dict(item) for item in raw_items]
+        body = await self._transport.request(
+            "GET",
+            ORGANIZATIONS_PATH,
+            params=_build_page_params(limit=limit, page=page),
+        )
+        return OffsetPage.from_dict(body, Organization.from_dict)
+
+    def iter(
+        self,
+        *,
+        limit: int | None = None,
+    ) -> AsyncIterator[Organization]:
+        """Async analogue of `iter`."""
+        return iter_all_offset_async(
+            self._transport,
+            ORGANIZATIONS_PATH,
+            Organization.from_dict,
+            params=_build_page_params(limit=limit, page=None),
+        )
 
     async def list_users(
         self,
@@ -202,7 +250,7 @@ class AsyncOrganizations:
         body = await self._transport.request(
             "GET",
             _users_path(org_uuid),
-            params=_build_user_params(limit=limit, page=page),
+            params=_build_page_params(limit=limit, page=page),
         )
         return OffsetPage.from_dict(body, User.from_dict)
 
@@ -217,5 +265,5 @@ class AsyncOrganizations:
             self._transport,
             _users_path(org_uuid),
             User.from_dict,
-            params=_build_user_params(limit=limit, page=None),
+            params=_build_page_params(limit=limit, page=None),
         )

@@ -116,6 +116,48 @@ def test_project_detail_defaults_for_missing_extension_fields() -> None:
     assert detail.attachments_count == 0
 
 
+def test_project_attachment_typed_file_fields() -> None:
+    # md5 / size_bytes are on project_file entries and used to land in
+    # extra; updated_at is on project_doc entries.
+    attachment = ProjectAttachment.from_dict(
+        {
+            "id": "claude_file_01UaT9wBcDfGhJkLmNpQrSv7",
+            "created_at": "2026-04-10T08:09:10Z",
+            "filename": "dashboard_mockup_v1.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 482133,
+            "md5": "56367e4d2705cc9c025ad07424e944f0",
+            "type": "project_file",
+        }
+    )
+    assert attachment.md5 == "56367e4d2705cc9c025ad07424e944f0"
+    assert attachment.size_bytes == 482133
+    assert attachment.updated_at is None
+    assert attachment.extra == {}
+
+
+def test_project_attachment_doc_has_no_file_fields() -> None:
+    attachment = ProjectAttachment.from_dict(
+        {
+            "id": "claude_proj_doc_01YnT8sBcWvUtXzQpMkRfDgH",
+            "created_at": "2026-04-10T08:09:11Z",
+            "filename": "requirements.md",
+            "mime_type": "text/plain",
+            "type": "project_doc",
+            "updated_at": None,
+        }
+    )
+    assert attachment.type == "project_doc"
+    assert attachment.md5 is None
+    assert attachment.size_bytes is None
+
+
+def test_project_from_dict_without_organization_id() -> None:
+    body = {k: v for k, v in SPEC_EXAMPLE_PROJECT.items() if k != "organization_id"}
+    project = Project.from_dict(body)
+    assert project.organization_id is None
+
+
 def test_project_attachment_from_dict_file() -> None:
     att = ProjectAttachment.from_dict(SPEC_EXAMPLE_FILE_ATTACHMENT)
     assert att.type == "project_file"

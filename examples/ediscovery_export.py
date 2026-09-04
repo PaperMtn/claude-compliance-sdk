@@ -34,8 +34,20 @@ def parse_args() -> argparse.Namespace:
         "--user",
         action="append",
         dest="user_ids",
-        required=True,
-        help="Actor user ID (1-10, repeatable). Required by the API.",
+        help=(
+            "Actor user ID (1-10, repeatable). Omit to export every chat "
+            "under the parent organisation, which is usually what you want."
+        ),
+    )
+    parser.add_argument(
+        "--order-by",
+        choices=("created_at", "updated_at"),
+        default=None,
+        help=(
+            "Sort key. updated_at is only valid for organisation-wide "
+            "exports (omit --user) and is the way to keep an export "
+            "current across runs."
+        ),
     )
     parser.add_argument("--since", help="Earliest created_at (RFC 3339).")
     parser.add_argument("--until", help="Latest created_at (RFC 3339).")
@@ -113,6 +125,7 @@ def main() -> int:
             message_count = 0
             for chat in client.chats.iter(
                 user_ids=args.user_ids,
+                order_by=args.order_by,
                 created_at_gte=args.since,
                 created_at_lt=args.until,
                 limit=args.limit,

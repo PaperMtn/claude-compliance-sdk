@@ -38,6 +38,19 @@ maintainer first.
   (403), and a 401 is always `InvalidAPIKeyError`. The client refines a
   403 via `error.type`/message; the server is the source of truth. This
   supersedes the original Phase-0 "401 split".
+- **`anthropic-version` is sent on every request (ADR-0004).** Default
+  `2023-06-01`, overridable via the `anthropic_version` client kwarg,
+  suppressible with `None`. This **reverses** the Phase-0 decision to
+  omit it. Do not re-remove it on the strength of the old CONTEXT.md
+  note or the old test names.
+- **Compliance Access Key (`sk-ant-api01-`) is the primary credential.**
+  It reaches every endpoint. An Admin API key (`sk-ant-admin01-`)
+  reaches the Activity Feed *only* and 403s everywhere else. Do not
+  describe `activities` as "admin key only" — that is backwards.
+- **Every paginated resource exposes `list()` + `iter()`.**
+  `organizations.list()` returns an `OffsetPage`, not a bare list; it
+  was changed in 0.3.0 because the endpoint became paginated and the
+  old shape silently truncated.
 - **Admin-key local gate:** **skipped.** Do not pre-flight check the
   key prefix before calling admin-only endpoints. Let the server 401
   and surface that as `InvalidAPIKeyError` / `InsufficientScopeError`.

@@ -56,9 +56,12 @@ class Project:
         name: Project name.
         created_at: RFC 3339 creation timestamp.
         updated_at: RFC 3339 last-update timestamp.
-        organization_id: Owning organisation's tagged ID.
         is_private: ``True`` when the project is visible only to the
             creator and specified collaborators.
+        organization_id: Owning organisation's tagged ID.
+            **Deprecated** by the API in favour of ``organization_uuid``.
+        organization_uuid: Owning organisation's UUID. Prefer this over
+            ``organization_id``.
         user: Creator info (``id``, ``email_address``) or ``None`` when
             the creator's account has been deleted. Kept as a raw dict.
         extra: Any additional fields the API adds in a later revision.
@@ -68,8 +71,9 @@ class Project:
     name: str
     created_at: str
     updated_at: str
-    organization_id: str
     is_private: bool
+    organization_id: str | None = None
+    organization_uuid: str | None = None
     user: dict[str, Any] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -124,7 +128,17 @@ class ProjectAttachment:
         created_at: RFC 3339 creation timestamp.
         filename: Display name.
         mime_type: MIME type. ``"text/plain"`` for project docs;
-            otherwise whatever the user uploaded.
+            otherwise whatever the user uploaded. Describes the *stored*
+            content, which for some documents is extracted text rather
+            than the original upload.
+        md5: Lowercase hex MD5 of the stored content, when recorded.
+            ``project_file`` entries only. Use the file metadata
+            endpoint for the authoritative value.
+        size_bytes: Size of the stored content, when recorded.
+            ``project_file`` entries only.
+        updated_at: Last-modified timestamp. ``project_doc`` entries
+            only, and reserved for future use — currently always
+            ``None``.
         extra: Any additional fields the API adds in a later revision.
     """
 
@@ -133,6 +147,9 @@ class ProjectAttachment:
     created_at: str
     filename: str
     mime_type: str
+    md5: str | None = None
+    size_bytes: int | None = None
+    updated_at: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod

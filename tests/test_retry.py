@@ -203,6 +203,7 @@ def _sync_transport(max_retries: int = 3) -> SyncTransport:
         timeout=30.0,
         max_retries=max_retries,
         rate_limit_rpm=600,
+        anthropic_version="2023-06-01",
     )
 
 
@@ -213,6 +214,7 @@ def _async_transport(max_retries: int = 3) -> AsyncTransport:
         timeout=30.0,
         max_retries=max_retries,
         rate_limit_rpm=600,
+        anthropic_version="2023-06-01",
     )
 
 

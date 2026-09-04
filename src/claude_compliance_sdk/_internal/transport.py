@@ -39,11 +39,16 @@ def _build_user_agent() -> str:
     )
 
 
-def _build_default_headers(api_key: str) -> dict[str, str]:
-    return {
+def _build_default_headers(api_key: str, anthropic_version: str | None) -> dict[str, str]:
+    headers = {
         "x-api-key": api_key,
         "User-Agent": _build_user_agent(),
     }
+    # A caller can pass None to suppress the header entirely, which is
+    # the escape hatch if a route ever rejects it again (see ADR-0004).
+    if anthropic_version:
+        headers["anthropic-version"] = anthropic_version
+    return headers
 
 
 def _decode_body(response: httpx.Response) -> Any:
@@ -100,6 +105,8 @@ class SyncTransport:
         rate_limit_rpm: Maximum requests per rolling 60-second window.
             ``0`` (or negative) disables the limiter. Smooths bursty
             callers; the server remains the source of truth.
+        anthropic_version: Value for the ``anthropic-version`` header,
+            sent on every request. ``None`` or empty suppresses it.
     """
 
     def __init__(
@@ -110,11 +117,12 @@ class SyncTransport:
         timeout: float,
         max_retries: int,
         rate_limit_rpm: int,
+        anthropic_version: str | None,
     ) -> None:
         self._client: httpx.Client = httpx.Client(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key),
+            headers=_build_default_headers(api_key, anthropic_version),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -224,11 +232,12 @@ class AsyncTransport:
         timeout: float,
         max_retries: int,
         rate_limit_rpm: int,
+        anthropic_version: str | None,
     ) -> None:
         self._client: httpx.AsyncClient = httpx.AsyncClient(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key),
+            headers=_build_default_headers(api_key, anthropic_version),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm

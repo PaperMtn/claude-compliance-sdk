@@ -45,6 +45,7 @@ def sync_transport() -> SyncTransport:
         timeout=30.0,
         max_retries=0,
         rate_limit_rpm=0,
+        anthropic_version="2023-06-01",
     )
     yield transport
     transport.close()
@@ -58,6 +59,7 @@ async def async_transport() -> AsyncTransport:
         timeout=30.0,
         max_retries=0,
         rate_limit_rpm=0,
+        anthropic_version="2023-06-01",
     )
     yield transport
     await transport.aclose()
