@@ -11,7 +11,7 @@ Requires a **Compliance Access Key** (``sk-ant-api01-...``).
 
 Usage::
 
-    export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-api01-...
+    export ANTHROPIC_COMPLIANCE_ACCESS_KEY=sk-ant-api01-...
     python examples/file_pull.py \\
         --project claude_proj_abc123 \\
         --out-dir ./files

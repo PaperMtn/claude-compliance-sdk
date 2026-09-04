@@ -63,6 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   arriving in `extra`.
 - `ProjectAttachment.md5`, `.size_bytes`, and `.updated_at` — previously
   arriving in `extra`.
+- `examples/session_export.py` — export Cowork, Claude Code, and
+  Claude Science transcripts over a time window, one JSON file per
+  session. Handles the cases worth knowing about: unavailable message
+  content is exported rather than dropped, non-transient retention
+  failures skip a session instead of blocking the walk, and pending
+  remote sessions are left for a later run.
 - `scripts/snapshot_spec.py` and `spec-snapshots/<date>/` — committed
   markdown snapshots of the hosted docs, so upstream API changes are
   visible as a `git diff`.
@@ -118,6 +124,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Documentation** — the key model is now described the right way
+  round. A **Compliance Access Key** (`sk-ant-api01-...`, created in
+  claude.ai) reaches every endpoint and is the primary credential; an
+  **Admin API key** reaches the Activity Feed *only* and 403s
+  elsewhere. Previously the README and the `activities` docstrings
+  implied the Activity Feed was admin-key territory, which is
+  backwards. All four live scopes are now documented, along with the
+  retirement of `read:compliance_org_settings` on 2026-06-30.
+- The client now reads `ANTHROPIC_COMPLIANCE_ACCESS_KEY`, the name the
+  hosted docs use. The legacy `ANTHROPIC_COMPLIANCE_API_KEY` this SDK
+  shipped with is still honoured as a fallback, so existing
+  deployments keep working; the new name wins when both are set.
 - Retry backoff defaults moved from 0.5s base / 20s cap to **1s base /
   60s cap**, matching the fallback the API documents for a 429 with no
   `Retry-After` header. Retries are correspondingly slower.

@@ -84,7 +84,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-ra --strict-markers"
 markers = [
-    "integration: marks tests that require ANTHROPIC_COMPLIANCE_API_KEY and hit the live API (deselect with '-m \"not integration\"')",
+    "integration: marks tests that require ANTHROPIC_COMPLIANCE_ACCESS_KEY and hit the live API (deselect with '-m \"not integration\"')",
 ]
 
 [tool.coverage.run]

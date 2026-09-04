@@ -92,11 +92,22 @@ spec, the IDs, and the lifecycles all differ.
 
 ### Auth
 
-- **Compliance Access Key** (`sk-ant-api01-…`) — issued from Claude.ai.
-  Grants access to most resources except the Activity Feed.
-- **Admin Key** (`sk-ant-admin01-…`) — issued from the Anthropic
-  Console. **Only valid on the Activity Feed.** All other endpoints
-  reject it.
+- **Compliance Access Key** (`sk-ant-api01-…`) — created in claude.ai
+  (Organization settings → API) by a primary owner or organisation
+  owner. Reaches **every** endpoint, including the Activity Feed. This
+  is the primary credential.
+- **Admin API key** (`sk-ant-admin01-…`) — created in Claude Console.
+  Reaches the **Activity Feed only**; every other endpoint returns 403.
+  It carries `read:compliance_activities` only if the Compliance API
+  was already enabled for the organisation when the key was created.
+
+Four scopes exist, immutable once a key is created:
+`read:compliance_activities`, `read:compliance_user_data` (chats,
+messages, files, projects, **sessions**, org users, group members),
+`delete:compliance_user_data`, and `read:compliance_org_data` (orgs,
+roles, groups, effective settings). The separate
+`read:compliance_org_settings` scope was **retired 2026-06-30**; a key
+carrying only it now 403s on the settings endpoint.
 
 The SDK does **not** check the key prefix locally before calling an
 endpoint. The server enforces; the client labels. A `401` is an invalid
@@ -238,6 +249,8 @@ issue first.
 | 23  | `APIError.retryable` is a class-level marker (`None` = use the status rules, `False` = never retry). Ranks below the server's `x-should-retry` header and above the status set. | 2026-09-04 | locked |
 | 24  | Server `anthropic-ratelimit-*` headers constrain the limiter; the local sliding window is only an upper bound and is honoured even when `rate_limit_rpm=0`. No proportional slowdown — `remaining` is exposed so callers set their own policy. See [ADR-0007](adr/0007-server-reported-rate-limits-over-local-token-bucket.md). | 2026-09-04 | locked |
 | 25  | `Retry-After` is a floor on the retry delay, not a replacement, because the remote-session budget sends `1` as a minimum rather than a real reset. | 2026-09-04 | locked |
+| 26  | Compliance Access Key (`sk-ant-api01-`) is the primary credential and reaches every endpoint; an Admin API key reaches the Activity Feed only. Reverses the Phase-0 framing that treated the admin key as primary. | 2026-09-04 | locked |
+| 27  | `ANTHROPIC_COMPLIANCE_ACCESS_KEY` is read first, with the legacy `ANTHROPIC_COMPLIANCE_API_KEY` kept as a fallback rather than swapped, so existing deployments do not break silently. | 2026-09-04 | locked |
 
 Promote any of these to a full ADR (`adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
@@ -262,8 +275,11 @@ hosted docs, update it here and take a fresh snapshot.
   top of the shared one; its 429 always sends `retry-after: 1` as a
   minimum, and its `anthropic-ratelimit-*` headers describe the shared
   limit rather than the exhausted one.
-- **Two key types:** `sk-ant-api01-` (Compliance Access — most resources)
-  and `sk-ant-admin01-` (Admin — only valid on the Activity Feed).
+- **Two key types:** `sk-ant-api01-` (Compliance Access — every
+  endpoint) and `sk-ant-admin01-` (Admin API — Activity Feed only).
+- **Env vars:** the docs use `ANTHROPIC_COMPLIANCE_ACCESS_KEY`; the SDK
+  reads that first and falls back to the legacy
+  `ANTHROPIC_COMPLIANCE_API_KEY` it shipped with.
 - **Two pagination styles:** cursor (`after_id` / `before_id`) on
   Activity Feed, Chats, Messages; opaque `page` token on everything
   else.

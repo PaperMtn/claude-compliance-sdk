@@ -6,19 +6,18 @@ and resource group attributes are otherwise identical so callers can
 swap one client for the other without changing call sites.
 """
 
-import os
 from types import TracebackType
 
 from claude_compliance_sdk._internal.rate_limit import RateLimitSnapshot
 from claude_compliance_sdk._internal.transport import AsyncTransport
 from claude_compliance_sdk.client import (
-    API_KEY_ENV_VAR,
     DEFAULT_ANTHROPIC_VERSION,
     DEFAULT_BASE_URL,
     DEFAULT_MAX_DOWNLOAD_BYTES,
     DEFAULT_MAX_RETRIES,
     DEFAULT_RATE_LIMIT_RPM,
     DEFAULT_TIMEOUT_SECONDS,
+    resolve_api_key,
 )
 from claude_compliance_sdk.resources.activities import AsyncActivities
 from claude_compliance_sdk.resources.artifacts import AsyncArtifacts
@@ -42,10 +41,13 @@ class AsyncComplianceClient:
     ``httpx.AsyncClient`` is closed cleanly on exit.
 
     Args:
-        api_key: A Compliance Access Key (``sk-ant-api01-...``) or an
-            Admin key (``sk-ant-admin01-...``). If omitted, the value
-            of the ``ANTHROPIC_COMPLIANCE_API_KEY`` environment variable
-            is used.
+        api_key: A **Compliance Access Key** (``sk-ant-api01-...``),
+            created in claude.ai, which reaches every endpoint. An
+            **Admin API key** (``sk-ant-admin01-...``) also works but
+            reaches the Activity Feed *only* — every other endpoint
+            returns 403. If omitted, ``ANTHROPIC_COMPLIANCE_ACCESS_KEY``
+            is read from the environment, falling back to the legacy
+            ``ANTHROPIC_COMPLIANCE_API_KEY``.
         base_url: Override the API host. Defaults to the Anthropic
             production host.
         timeout: Per-request timeout in seconds. Default 30.
@@ -97,12 +99,7 @@ class AsyncComplianceClient:
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
         anthropic_version: str | None = DEFAULT_ANTHROPIC_VERSION,
     ) -> None:
-        resolved_key = api_key if api_key is not None else os.environ.get(API_KEY_ENV_VAR)
-        if not resolved_key:
-            raise ValueError(
-                "No API key provided. Pass api_key=... or set the "
-                f"{API_KEY_ENV_VAR} environment variable."
-            )
+        resolved_key = resolve_api_key(api_key)
         self._api_key: str = resolved_key
         self.base_url: str = base_url
         self.timeout: float = timeout

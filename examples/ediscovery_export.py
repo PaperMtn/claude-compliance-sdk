@@ -9,7 +9,7 @@ Requires a **Compliance Access Key** (``sk-ant-api01-...``).
 
 Usage::
 
-    export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-api01-...
+    export ANTHROPIC_COMPLIANCE_ACCESS_KEY=sk-ant-api01-...
     python examples/ediscovery_export.py \\
         --user user_abc123 --user user_def456 \\
         --since 2025-06-01T00:00:00Z \\

@@ -232,12 +232,6 @@ helpers — only the I/O layer differs.
   `git diff` between two snapshots to see what changed upstream. Each
   directory has a `MANIFEST.md` with source URLs and checksums.
   `activity-types.txt` is the sorted activity-type enum.
-- **`2026-05-04 Anthropic Compliance API docs.pdf`** — point-in-time
-  spec export (Rev K), **superseded** by `spec-snapshots/`. It is
-  gitignored, so only the maintainer has it, and it now predates
-  sessions, the settings endpoint, the project-attachments rename,
-  organizations pagination, and the current key model. Do not use it
-  as a reference; it is retained only as provenance for ADR-0003.
 - **`adr/`** — architecture decisions worth preserving past a single
   PR. Kept in the repo for contributors; not published to the docs
   site.

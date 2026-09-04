@@ -11,7 +11,7 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, __version__
-from claude_compliance_sdk.client import API_KEY_ENV_VAR
+from claude_compliance_sdk.client import API_KEY_ENV_VAR, API_KEY_ENV_VARS, LEGACY_API_KEY_ENV_VAR
 
 RESOURCE_GROUPS = (
     "activities",
@@ -56,9 +56,53 @@ def test_constructor_falls_back_to_env_var(
 def test_constructor_raises_when_no_api_key_anywhere(
     client_cls: type, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv(API_KEY_ENV_VAR, raising=False)
+    for name in API_KEY_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
     with pytest.raises(ValueError, match="No API key provided"):
         client_cls()
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_constructor_falls_back_to_the_legacy_env_var(
+    client_cls: type, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # 0.1.0 and 0.2.0 shipped reading ANTHROPIC_COMPLIANCE_API_KEY.
+    # Swapping outright would break those deployments silently.
+    monkeypatch.delenv(API_KEY_ENV_VAR, raising=False)
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-legacy")
+    client = client_cls()
+    assert client._api_key == "sk-ant-api01-legacy"  # noqa: SLF001
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_documented_env_var_wins_over_the_legacy_one(
+    client_cls: type, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A deployment that sets both migrates by deleting the old one, so
+    # the new name has to take precedence.
+    monkeypatch.setenv(API_KEY_ENV_VAR, "sk-ant-api01-new")
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-old")
+    client = client_cls()
+    assert client._api_key == "sk-ant-api01-new"  # noqa: SLF001
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_explicit_api_key_beats_both_env_vars(
+    client_cls: type, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(API_KEY_ENV_VAR, "sk-ant-api01-env")
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-legacy")
+    client = client_cls(api_key="sk-ant-api01-explicit")
+    assert client._api_key == "sk-ant-api01-explicit"  # noqa: SLF001
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_empty_env_var_falls_through(client_cls: type, monkeypatch: pytest.MonkeyPatch) -> None:
+    # An exported-but-empty variable is a misconfiguration, not a key.
+    monkeypatch.setenv(API_KEY_ENV_VAR, "")
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-legacy")
+    client = client_cls()
+    assert client._api_key == "sk-ant-api01-legacy"  # noqa: SLF001
 
 
 @pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])

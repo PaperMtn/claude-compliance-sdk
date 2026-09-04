@@ -135,7 +135,10 @@ Conventions:
 - Async tests use `pytest-asyncio` in `auto` mode — just write
   `async def test_…` and it works.
 - Integration tests are marked `@pytest.mark.integration` and require
-  `ANTHROPIC_COMPLIANCE_API_KEY` to be set. They are skipped in CI and
+  `ANTHROPIC_COMPLIANCE_ACCESS_KEY` (or the legacy
+  `ANTHROPIC_COMPLIANCE_API_KEY`) to be set. Use a **Compliance Access
+  Key** (`sk-ant-api01-...`) — an Admin API key reaches the Activity
+  Feed only and 403s everywhere else. They are skipped in CI and
   only run locally against the live API.
 - Coverage gate is 90 %. We run coverage locally — we do not publish to
   Codecov.
