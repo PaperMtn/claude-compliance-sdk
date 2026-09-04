@@ -21,14 +21,15 @@ what they sent, what Claude generated, and what files were uploaded or
 produced. It is the data plane for eDiscovery, DLP, audit, and
 incident-response use cases.
 
-The SDK targets the Anthropic Compliance API. The **hosted spec** at
-<https://platform.claude.com/docs/en/api/compliance> is the source of
-truth — it reflects the live API as Anthropic ships changes. A
-**point-in-time PDF export** lives at the repo root
-(`2026-05-04 Anthropic Compliance API docs.pdf`, Rev K) as a stable
-reference for diffing, but may lag behind. When the hosted spec and
-this document disagree, the hosted spec wins — file an issue. When
-the PDF and the hosted spec disagree, the hosted spec wins.
+The SDK targets the Anthropic Compliance API. The **hosted docs** at
+<https://platform.claude.com/docs/en/manage-claude/compliance-api> are
+the source of truth — they reflect the live API as Anthropic ships
+changes. Because those pages are rewritten in place with no version
+history, they are snapshotted as markdown into
+`spec-snapshots/<YYYY-MM-DD>/` and committed, so upstream changes show
+up as a reviewable `git diff` (see `scripts/snapshot_spec.py`). When
+the hosted docs and this document disagree, the hosted docs win — file
+an issue.
 
 The SDK does **not** wrap the regular Anthropic Messages API; for that,
 use the official `anthropic` Python SDK.
@@ -238,10 +239,10 @@ extended argument.
 
 ## 5. Spec anchors
 
-Quick reference points lifted from the **hosted spec**. The PDF at
-the repo root captures Rev K (2026-05-04) for diff purposes; entries
-here track current live behaviour. If anything below changes in the
-hosted spec, update it here.
+Quick reference points lifted from the **hosted docs**. Entries here
+track current live behaviour; `spec-snapshots/<date>/` holds the
+verbatim pages each was taken from. If anything below changes in the
+hosted docs, update it here and take a fresh snapshot.
 
 - **Rate limit:** 600 requests per minute per **parent organisation**
   (shared budget across all Compliance Access Keys and Admin API keys
