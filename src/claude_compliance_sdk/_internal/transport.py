@@ -195,6 +195,7 @@ class SyncTransport:
                     method=method,
                     status_code=response.status_code,
                     should_retry_header=_parse_should_retry(response.headers),
+                    error_retryable=api_error.retryable,
                 ):
                     retry_after = (
                         api_error.retry_after if isinstance(api_error, RateLimitError) else None
@@ -286,6 +287,7 @@ class AsyncTransport:
                     method=method,
                     status_code=response.status_code,
                     should_retry_header=_parse_should_retry(response.headers),
+                    error_retryable=api_error.retryable,
                 ):
                     retry_after = (
                         api_error.retry_after if isinstance(api_error, RateLimitError) else None

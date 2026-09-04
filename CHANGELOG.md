@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Session transcripts** — two new resource groups covering Cowork,
+  Claude Code, Claude Science, and Claude for Microsoft 365:
+  - `client.local_sessions` — sessions on users' machines
+    (`list`, `iter`, `get`, `list_messages`, `iter_messages`).
+  - `client.remote_sessions` — Cowork sessions running in
+    Anthropic-managed cloud environments (`list`, `iter`,
+    `list_messages`, `iter_messages`; the API exposes no retrieve-one).
+
+  New types: `LocalSession`, `LocalSessionMessage`,
+  `LocalSessionTranscript`, `RemoteSession`, `RemoteSessionMessage`,
+  `RemoteSessionTranscript`, and the shared `SessionUser`. Message
+  `content` blocks stay raw dicts so block types that have not shipped
+  yet pass through untouched. See ADR-0005 for why the two families are
+  separate groups.
+- `LocalSessionsUnavailableError` (subclass of `NotFoundError`) — the
+  404 meaning "local sessions are off for this parent organisation",
+  which does *not* mean a session is gone. Keep your queued IDs.
+- `LocalSessionsRetentionUnavailableError` (subclass of
+  `InternalServerError`) — the one local-session 503 that is not
+  transient. It is excluded from retry. See ADR-0006.
 - `organizations.iter()` — auto-paginating sibling to
   `organizations.list()`, matching every other paginated resource.
 - `chats.list()` / `chats.iter()` accept `order_by` (`"created_at"` or
@@ -46,6 +66,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Chat.organization_id` and `Project.organization_id` are now optional
   and documented as deprecated by the API in favour of
   `organization_uuid`.
+
+### Fixed
+
+- `OffsetPage.has_more` is now derived from `next_page` when the payload
+  omits the field. The session endpoints return `next_page` with no
+  `has_more`, so reading `.has_more` previously reported "no further
+  pages" while handing back a live cursor. Auto-pagination was already
+  correct — it stops on `next_page`, not `has_more`.
+- A 503 whose message reports that retention overrides cannot be
+  evaluated is no longer retried. It depends on organisation settings
+  rather than load, so the previous behaviour spent the whole retry
+  budget on a failure that fails identically every time.
 
 ### Deprecated
 

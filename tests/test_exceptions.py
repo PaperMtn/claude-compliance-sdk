@@ -20,6 +20,8 @@ from claude_compliance_sdk import (
     InsufficientScopeError,
     InternalServerError,
     InvalidAPIKeyError,
+    LocalSessionsRetentionUnavailableError,
+    LocalSessionsUnavailableError,
     NotFoundError,
     PermissionDeniedError,
     RateLimitError,
@@ -415,3 +417,73 @@ def test_top_level_reexports_present() -> None:
     ):
         assert hasattr(sdk, name), f"missing top-level export: {name}"
         assert name in sdk.__all__, f"missing from __all__: {name}"
+
+
+# ---------------------------------------------------------------------------
+# Local-session refinement (ADR-0006)
+# ---------------------------------------------------------------------------
+
+
+def _from(status: int, error_type: str, message: str) -> APIError:
+    return APIError.from_response(
+        status_code=status, body={"error": {"type": error_type, "message": message}}
+    )
+
+
+def test_404_local_sessions_unavailable_is_refined() -> None:
+    error = _from(404, "not_found_error", "Local sessions are not available.")
+    assert isinstance(error, LocalSessionsUnavailableError)
+    # Still a NotFoundError, so existing handlers keep working.
+    assert isinstance(error, NotFoundError)
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["Local session not found.", "Remote session not found.", "Chat claude_chat_x not found."],
+)
+def test_other_404s_stay_plain_not_found(message: str) -> None:
+    error = _from(404, "not_found_error", message)
+    assert isinstance(error, NotFoundError)
+    assert not isinstance(error, LocalSessionsUnavailableError)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "The local-sessions index cannot currently evaluate retention overrides for this page. "
+        "Try again later.",
+        "The local-sessions index cannot currently evaluate retention overrides for this session. "
+        "Try again later.",
+    ],
+)
+def test_503_retention_override_is_refined_and_not_retryable(message: str) -> None:
+    error = _from(503, "overloaded_error", message)
+    assert isinstance(error, LocalSessionsRetentionUnavailableError)
+    assert isinstance(error, InternalServerError)
+    assert error.retryable is False
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "The local-sessions index is temporarily unavailable. Try again shortly.",
+        "Captured content is temporarily unavailable. Try again shortly.",
+    ],
+)
+def test_transient_503s_stay_plain_and_retryable(message: str) -> None:
+    # Two of the three local-session 503 bodies really are transient and
+    # must keep the default retry behaviour.
+    error = _from(503, "overloaded_error", message)
+    assert isinstance(error, InternalServerError)
+    assert not isinstance(error, LocalSessionsRetentionUnavailableError)
+    assert error.retryable is None
+
+
+def test_503_without_the_overloaded_type_is_not_refined() -> None:
+    error = _from(503, "internal_error", "retention overrides could not be evaluated")
+    assert isinstance(error, InternalServerError)
+    assert not isinstance(error, LocalSessionsRetentionUnavailableError)
+
+
+def test_500_carries_no_retryable_marker() -> None:
+    assert _from(500, "internal_error", "boom").retryable is None

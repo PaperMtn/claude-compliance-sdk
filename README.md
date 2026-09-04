@@ -11,13 +11,13 @@ The Compliance API requires an Enterprise plan, and primary owners can enable it
 
 ## Features
 
-- Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, and Organisations.
+- Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, Organisations, and session transcripts from Cowork and Claude Code.
 - Full sync + async parity. Every resource method is available on both `ComplianceClient` and `AsyncComplianceClient` under the same name.
 - Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future API revision adding a field cannot break the SDK.
 - Built-in retry with exponential backoff that honours `Retry-After`, plus a client-side sliding-window rate limiter that matches the server's 600 RPM cap.
 - Streamed downloads with a configurable memory ceiling — switch from eager bytes to `download_to_file()` or `download_stream()` for anything larger.
 - Typed exception hierarchy. Every API error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
-- Tracks the hosted [Anthropic Compliance API spec](https://platform.claude.com/docs/en/api/compliance).
+- Tracks the hosted [Anthropic Compliance API docs](https://platform.claude.com/docs/en/manage-claude/compliance-api), snapshotted under `spec-snapshots/` so upstream changes are visible as a diff.
 
 ## Requirements
 Python 3.11+.
@@ -143,6 +143,42 @@ for project in client.projects.iter(organization_ids=["org_abc123"]):
 
 Cursor resources are identical in shape; the page contains `last_id`
 and you pass it back as `after_id`.
+
+## Session transcripts
+
+Transcripts of the sessions your users run in Claude apps — Cowork,
+Claude Code, Claude Science, and Claude for Microsoft 365 — come from
+two resource groups, split by **where the session ran**:
+
+| Resource group | Covers | ID prefix |
+| --- | --- | --- |
+| `client.local_sessions` | Cowork in Claude Desktop, Claude Code (terminal, desktop, IDE), Claude Science, Claude for Microsoft 365 — all on the user's own machine | `clls_` |
+| `client.remote_sessions` | Cowork started on claude.ai web or mobile, running in Anthropic-managed cloud environments | `cse_` |
+
+If you are looking for Claude Code usage, it is `local_sessions`.
+
+```python
+with ComplianceClient() as client:
+    for session in client.local_sessions.iter(created_at_gte="2026-07-01T00:00:00Z"):
+        if session.product_surface != "claude_code":
+            continue
+        for message in client.local_sessions.iter_messages(session.id):
+            print(session.id, message.role, message.content)
+```
+
+Both groups are read-only — sessions cannot be deleted through the
+Compliance API. Transcript content blocks (`text`, `tool_use`,
+`tool_result`) are returned as plain dicts so block types that have not
+shipped yet pass through rather than breaking parsing. Note that a
+`tool_use` block's `input` is a JSON-encoded *string*, and a truncated
+one is not valid JSON — raise `tool_use_input_max_bytes` (or pass `-1`
+for the server maximum) if you need to parse it.
+
+Two errors are worth catching by name. `LocalSessionsUnavailableError`
+is a 404 meaning the endpoints are off for your parent organisation, not
+that a session is gone — keep your queued IDs and retry later.
+`LocalSessionsRetentionUnavailableError` is a 503 that is *not*
+transient; skip that session and come back to it on a later run.
 
 ## Downloads
 

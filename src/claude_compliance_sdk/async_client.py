@@ -25,9 +25,11 @@ from claude_compliance_sdk.resources.chats import AsyncChats
 from claude_compliance_sdk.resources.files import AsyncFiles
 from claude_compliance_sdk.resources.generated_files import AsyncGeneratedFiles
 from claude_compliance_sdk.resources.groups import AsyncGroups
+from claude_compliance_sdk.resources.local_sessions import AsyncLocalSessions
 from claude_compliance_sdk.resources.organizations import AsyncOrganizations
 from claude_compliance_sdk.resources.project_documents import AsyncProjectDocuments
 from claude_compliance_sdk.resources.projects import AsyncProjects
+from claude_compliance_sdk.resources.remote_sessions import AsyncRemoteSessions
 from claude_compliance_sdk.resources.roles import AsyncRoles
 
 
@@ -127,9 +129,11 @@ class AsyncComplianceClient:
             self._transport, max_download_bytes=max_download_bytes
         )
         self.groups: AsyncGroups = AsyncGroups(self._transport)
+        self.local_sessions: AsyncLocalSessions = AsyncLocalSessions(self._transport)
         self.organizations: AsyncOrganizations = AsyncOrganizations(self._transport)
         self.project_documents: AsyncProjectDocuments = AsyncProjectDocuments(self._transport)
         self.projects: AsyncProjects = AsyncProjects(self._transport)
+        self.remote_sessions: AsyncRemoteSessions = AsyncRemoteSessions(self._transport)
         self.roles: AsyncRoles = AsyncRoles(self._transport)
 
     async def aclose(self) -> None:
