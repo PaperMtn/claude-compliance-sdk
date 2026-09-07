@@ -1,6 +1,6 @@
 # 0004. Send the `anthropic-version` header on every request
 
-- **Status:** Accepted
+- **Status:** Accepted (verified against production 2026-09-07)
 - **Date:** 2026-09-04
 - **Deciders:** PaperMtn
 - **Tags:** transport, auth, spec-drift
@@ -57,9 +57,8 @@ it in one keyword rather than waiting for a release.
   the worst possible blast radius.
 - **Follow-ups** — the two transport tests that asserted the header's
   absence are inverted, and two more cover the override and the `None`
-  suppression. The `/v1/compliance/*` integration suite must be run
-  against a live key before 0.3.0 ships; a 404 there is the signal to
-  reopen this ADR. CONTEXT.md § Spec anchors is corrected.
+  suppression. CONTEXT.md § Spec anchors is corrected. The release
+  gate below is now satisfied.
 
 ## Alternatives considered
 
@@ -85,9 +84,25 @@ it in one keyword rather than waiting for a release.
 - **Why it was attractive:** it settles the factual disagreement instead
   of choosing a side, and was the original plan.
 - **Why it was rejected:** deferred rather than rejected. The
-  maintainer chose to follow the docs now and let the integration run
-  serve as the verification, which keeps Phase 1 moving. The test is
-  still required before release.
+  maintainer chose to follow the docs and let the integration run serve
+  as the verification. That run has since happened — see below.
+
+## Verification
+
+On **2026-09-07** the full integration suite was run against production
+with a live Compliance Access Key: nine tests across activities, chats,
+projects, organizations, roles, groups, and both session families. All
+passed, every request carrying `anthropic-version: 2023-06-01`.
+
+The Phase-0 observation that a `/v1/compliance/*` route 404s when the
+header is present **does not reproduce**. Whether the original 404 came
+from a since-fixed server behaviour or from something else about that
+request is now unknowable, but the decision recorded here is no longer
+resting on documentation alone.
+
+The `None` escape hatch stays. It costs one keyword and it is the
+difference between a one-line workaround and a release if this ever
+regresses.
 
 ## References
 
