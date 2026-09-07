@@ -259,7 +259,7 @@ async def test_async_iter_permissions(
 @requires_live_key
 def test_integration_list_roles() -> None:
     with ComplianceClient() as client:
-        orgs = client.organizations.list()
+        orgs = client.organizations.list().data
         if not orgs:
             pytest.skip("No organisations available to list roles for.")
         page = client.roles.list(orgs[0].uuid, limit=5)
