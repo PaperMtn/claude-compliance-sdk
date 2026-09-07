@@ -41,8 +41,10 @@ class CursorPage(Generic[T]):
             ``None`` when the page is empty.
         last_id: ID of the last item in the page. Pass as ``after_id``
             on the next request to fetch the page after this one.
-        has_more: Server-supplied flag indicating whether further pages
-            exist after this one.
+        has_more: Whether further pages exist. Server-supplied when the
+            payload carries ``has_more``; derived from
+            ``next_page is not None`` when it does not, which is the
+            case on the session endpoints.
     """
 
     data: list[T]
@@ -86,7 +88,7 @@ class OffsetPage(Generic[T]):
         raw_items = body.get("data") or []
         return cls(
             data=[item_factory(item) for item in raw_items],
-            has_more=bool(body.get("has_more", False)),
+            has_more=_derive_has_more(body),
             next_page=_str_or_none(body.get("next_page")),
         )
 
@@ -202,6 +204,18 @@ async def iter_all_offset_async(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _derive_has_more(body: Mapping[str, Any]) -> bool:
+    """Read ``has_more``, falling back to the presence of ``next_page``.
+
+    The session endpoints return ``next_page`` with no ``has_more``
+    field at all, so trusting ``body.get("has_more", False)`` would
+    report "no further pages" while handing back a live cursor.
+    """
+    if "has_more" in body:
+        return bool(body["has_more"])
+    return body.get("next_page") is not None
 
 
 def _str_or_none(value: Any) -> str | None:

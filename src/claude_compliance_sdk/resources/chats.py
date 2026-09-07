@@ -30,6 +30,7 @@ its response.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import AsyncIterator, Iterator, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Mapping
@@ -43,6 +44,11 @@ from claude_compliance_sdk._internal.transport import AsyncTransport, SyncTransp
 StrList = list[str]
 
 CHATS_PATH = "/v1/compliance/apps/chats"
+
+# The API rejects `user_ids[]` combined with any `updated_at.*` bound
+# from this date. Named so the deprecation warning and the docs cannot
+# drift apart.
+USER_IDS_UPDATED_AT_REJECTED_FROM = "2026-09-22"
 
 # Top-level response keys that belong to the message-page wrapper rather
 # than to the chat itself. Pulled out before parsing the chat fields so
@@ -64,18 +70,22 @@ class Chat:
         name: Display name.
         created_at: RFC 3339 creation timestamp.
         updated_at: RFC 3339 last-update timestamp.
-        organization_id: Owning organisation's tagged ID.
-        model: Model the chat ran against (e.g. ``claude-opus-4-7``).
         href: Direct claude.ai URL for the chat.
+        model: Model the chat ran against (e.g. ``claude-opus-5``), or
+            ``None`` for legacy chats that never had a model recorded.
+        organization_id: Owning organisation's tagged ID.
+            **Deprecated** by the API in favour of ``organization_uuid``.
+        organization_uuid: Owning organisation's UUID. Prefer this over
+            ``organization_id``. ``None`` only if the API omits it.
         deleted_at: RFC 3339 deletion timestamp, or ``None`` while
-            the chat is still active. The server keeps the chat
-            record after a delete; this field marks it.
-        organization_uuid: Organisation UUID (alternate identifier),
-            or ``None`` when the API omits it.
+            the chat is still active. A chat deleted in claude.ai stays
+            listed with this field set and an empty ``name``, but its
+            message content is gone.
         project_id: Owning project's tagged ID, or ``None`` for
             standalone chats.
-        user: Creator info (``id``, ``email_address``) or ``None``.
-            Kept as a raw dict.
+        user: Creator info (``id``, ``email_address``) or ``None`` when
+            the creator's account has been deleted or they are no longer
+            in an organisation the key can read. Kept as a raw dict.
         extra: Any additional fields the API adds in a later revision.
     """
 
@@ -83,11 +93,11 @@ class Chat:
     name: str
     created_at: str
     updated_at: str
-    organization_id: str
-    model: str
     href: str
-    deleted_at: str | None = None
+    model: str | None = None
+    organization_id: str | None = None
     organization_uuid: str | None = None
+    deleted_at: str | None = None
     project_id: str | None = None
     user: dict[str, Any] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
@@ -182,19 +192,48 @@ class ChatMessagesPage:
 # ---------------------------------------------------------------------------
 
 
-def _validate_user_ids(user_ids: Sequence[str]) -> None:
-    """Enforce the API's 1–10 length on ``user_ids[]``.
+def _validate_user_ids(user_ids: Sequence[str] | None) -> None:
+    """Enforce the API's 1–10 length on ``user_ids[]`` when supplied.
 
-    Cheap input-shape check that runs locally; the server still
-    enforces and the SDK only labels.
+    ``user_ids[]`` is optional: omitting it queries every chat under the
+    parent organisation. Only the length of a supplied value is checked
+    here — a cheap input-shape check. The server still enforces, and the
+    SDK only labels.
     """
+    if user_ids is None:
+        return
     count = len(user_ids)
     if count < 1 or count > 10:
         raise ValueError(
             "user_ids must contain between 1 and 10 user IDs "
             f"(got {count}). The Compliance API rejects requests "
-            "outside this range."
+            "outside this range. Pass user_ids=None for an "
+            "organisation-wide query."
         )
+
+
+def _warn_on_deprecated_combination(
+    *,
+    user_ids: Sequence[str] | None,
+    updated_at_bounds: tuple[str | None, ...],
+) -> None:
+    """Warn when ``user_ids[]`` is combined with an ``updated_at.*`` bound.
+
+    The API rejects this combination with HTTP 400 from
+    ``USER_IDS_UPDATED_AT_REJECTED_FROM``. Warning rather than raising
+    keeps working code working until the server turns it off.
+    """
+    if user_ids is None or not any(bound is not None for bound in updated_at_bounds):
+        return
+    warnings.warn(
+        "Combining user_ids with an updated_at bound is deprecated and is "
+        f"rejected by the Compliance API after {USER_IDS_UPDATED_AT_REJECTED_FROM}. "
+        "For incremental polling by update time, omit user_ids and pass "
+        'order_by="updated_at" with after_id pagination, then select the '
+        "users you care about from the results.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
 
 
 def _chat_path(chat_id: str) -> str:
@@ -207,9 +246,10 @@ def _messages_path(chat_id: str) -> str:
 
 def _build_list_params(
     *,
-    user_ids: StrList,
+    user_ids: StrList | None,
     organization_ids: StrList | None,
     project_ids: StrList | None,
+    order_by: str | None,
     created_at_gte: str | None,
     created_at_gt: str | None,
     created_at_lte: str | None,
@@ -222,7 +262,9 @@ def _build_list_params(
     before_id: str | None,
     limit: int | None,
 ) -> dict[str, Any]:
-    params: dict[str, Any] = {"user_ids[]": list(user_ids)}
+    params: dict[str, Any] = {}
+    if user_ids is not None:
+        params["user_ids[]"] = list(user_ids)
     for name, values in (
         ("organization_ids", organization_ids),
         ("project_ids", project_ids),
@@ -230,6 +272,7 @@ def _build_list_params(
         if values:
             params[f"{name}[]"] = list(values)
     for name, value in (
+        ("order_by", order_by),
         ("created_at.gte", created_at_gte),
         ("created_at.gt", created_at_gt),
         ("created_at.lte", created_at_lte),
@@ -278,9 +321,10 @@ class Chats:
     def list(
         self,
         *,
-        user_ids: StrList,
+        user_ids: StrList | None = None,
         organization_ids: StrList | None = None,
         project_ids: StrList | None = None,
+        order_by: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -295,12 +339,34 @@ class Chats:
     ) -> CursorPage[Chat]:
         """Fetch one cursor-paginated page of chats.
 
+        Omit ``user_ids`` for an organisation-wide query. Combined with
+        ``order_by="updated_at"``, that is the recommended way to keep
+        an export current: one paginated walk picks up new, modified,
+        and claude.ai-deleted chats for every user without enumerating
+        users first.
+
+        Several combinations are rejected by the server rather than
+        checked here:
+
+        * ``project_ids`` requires ``user_ids``; it is not supported on
+          organisation-wide queries.
+        * ``order_by="updated_at"`` is rejected when ``user_ids`` is set.
+        * ``before_id`` (backward paging) works only with ``user_ids``.
+        * Time bounds must match the sort key — ``created_at.*`` with
+          ``order_by="created_at"``, ``updated_at.*`` with
+          ``order_by="updated_at"``.
+        * Cursors are bound to the sort key, so an ``after_id`` issued
+          under one ``order_by`` is rejected under the other.
+
         Args:
-            user_ids: **Required.** 1–10 user IDs to filter on. The
-                API rejects requests outside this range; the SDK
-                raises `ValueError` locally before sending.
+            user_ids: 1–10 user IDs to filter on, or ``None`` (the
+                default) for an organisation-wide query. A supplied
+                list outside 1–10 raises `ValueError` locally before
+                sending.
             organization_ids: Optional org filter.
-            project_ids: Optional project filter.
+            project_ids: Optional project filter. Requires ``user_ids``.
+            order_by: Sort key, ``"created_at"`` (server default) or
+                ``"updated_at"``.
             created_at_gte: ``created_at >= value`` (RFC 3339).
             created_at_gt: ``created_at > value`` (RFC 3339).
             created_at_lte: ``created_at <= value`` (RFC 3339).
@@ -315,9 +381,19 @@ class Chats:
             limit: Maximum results, default 100, max 1000.
 
         Raises:
-            ValueError: When ``user_ids`` is empty or longer than 10.
+            ValueError: When ``user_ids`` is supplied but empty or
+                longer than 10.
+
+        Warns:
+            DeprecationWarning: When ``user_ids`` is combined with any
+                ``updated_at`` bound. The API rejects that combination
+                after 2026-09-22.
         """
         _validate_user_ids(user_ids)
+        _warn_on_deprecated_combination(
+            user_ids=user_ids,
+            updated_at_bounds=(updated_at_gte, updated_at_gt, updated_at_lte, updated_at_lt),
+        )
         body = self._transport.request(
             "GET",
             CHATS_PATH,
@@ -325,6 +401,7 @@ class Chats:
                 user_ids=user_ids,
                 organization_ids=organization_ids,
                 project_ids=project_ids,
+                order_by=order_by,
                 created_at_gte=created_at_gte,
                 created_at_gt=created_at_gt,
                 created_at_lte=created_at_lte,
@@ -343,9 +420,10 @@ class Chats:
     def iter(
         self,
         *,
-        user_ids: StrList,
+        user_ids: StrList | None = None,
         organization_ids: StrList | None = None,
         project_ids: StrList | None = None,
+        order_by: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -365,12 +443,17 @@ class Chats:
             ValueError: When ``user_ids`` is empty or longer than 10.
         """
         _validate_user_ids(user_ids)
+        _warn_on_deprecated_combination(
+            user_ids=user_ids,
+            updated_at_bounds=(updated_at_gte, updated_at_gt, updated_at_lte, updated_at_lt),
+        )
         after_id: str | None = None
         while True:
             page = self.list(
                 user_ids=user_ids,
                 organization_ids=organization_ids,
                 project_ids=project_ids,
+                order_by=order_by,
                 created_at_gte=created_at_gte,
                 created_at_gt=created_at_gt,
                 created_at_lte=created_at_lte,
@@ -455,9 +538,10 @@ class AsyncChats:
     async def list(
         self,
         *,
-        user_ids: StrList,
+        user_ids: StrList | None = None,
         organization_ids: StrList | None = None,
         project_ids: StrList | None = None,
+        order_by: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -472,6 +556,10 @@ class AsyncChats:
     ) -> CursorPage[Chat]:
         """Async analogue of `list`."""
         _validate_user_ids(user_ids)
+        _warn_on_deprecated_combination(
+            user_ids=user_ids,
+            updated_at_bounds=(updated_at_gte, updated_at_gt, updated_at_lte, updated_at_lt),
+        )
         body = await self._transport.request(
             "GET",
             CHATS_PATH,
@@ -479,6 +567,7 @@ class AsyncChats:
                 user_ids=user_ids,
                 organization_ids=organization_ids,
                 project_ids=project_ids,
+                order_by=order_by,
                 created_at_gte=created_at_gte,
                 created_at_gt=created_at_gt,
                 created_at_lte=created_at_lte,
@@ -497,9 +586,10 @@ class AsyncChats:
     async def iter(
         self,
         *,
-        user_ids: StrList,
+        user_ids: StrList | None = None,
         organization_ids: StrList | None = None,
         project_ids: StrList | None = None,
+        order_by: str | None = None,
         created_at_gte: str | None = None,
         created_at_gt: str | None = None,
         created_at_lte: str | None = None,
@@ -512,12 +602,17 @@ class AsyncChats:
     ) -> AsyncIterator[Chat]:
         """Async analogue of `iter`."""
         _validate_user_ids(user_ids)
+        _warn_on_deprecated_combination(
+            user_ids=user_ids,
+            updated_at_bounds=(updated_at_gte, updated_at_gt, updated_at_lte, updated_at_lt),
+        )
         after_id: str | None = None
         while True:
             page = await self.list(
                 user_ids=user_ids,
                 organization_ids=organization_ids,
                 project_ids=project_ids,
+                order_by=order_by,
                 created_at_gte=created_at_gte,
                 created_at_gt=created_at_gt,
                 created_at_lte=created_at_lte,

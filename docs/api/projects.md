@@ -6,5 +6,6 @@
         - Project
         - ProjectDetail
         - ProjectAttachment
+        - ProjectCollaborator
         - Projects
         - AsyncProjects

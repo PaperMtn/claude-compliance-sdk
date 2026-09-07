@@ -21,14 +21,15 @@ what they sent, what Claude generated, and what files were uploaded or
 produced. It is the data plane for eDiscovery, DLP, audit, and
 incident-response use cases.
 
-The SDK targets the Anthropic Compliance API. The **hosted spec** at
-<https://platform.claude.com/docs/en/api/compliance> is the source of
-truth — it reflects the live API as Anthropic ships changes. A
-**point-in-time PDF export** lives at the repo root
-(`2026-05-04 Anthropic Compliance API docs.pdf`, Rev K) as a stable
-reference for diffing, but may lag behind. When the hosted spec and
-this document disagree, the hosted spec wins — file an issue. When
-the PDF and the hosted spec disagree, the hosted spec wins.
+The SDK targets the Anthropic Compliance API. The **hosted docs** at
+<https://platform.claude.com/docs/en/manage-claude/compliance-api> are
+the source of truth — they reflect the live API as Anthropic ships
+changes. Because those pages are rewritten in place with no version
+history, they are snapshotted as markdown into
+`spec-snapshots/<YYYY-MM-DD>/` and committed, so upstream changes show
+up as a reviewable `git diff` (see `scripts/snapshot_spec.py`). When
+the hosted docs and this document disagree, the hosted docs win — file
+an issue.
 
 The SDK does **not** wrap the regular Anthropic Messages API; for that,
 use the official `anthropic` Python SDK.
@@ -91,11 +92,22 @@ spec, the IDs, and the lifecycles all differ.
 
 ### Auth
 
-- **Compliance Access Key** (`sk-ant-api01-…`) — issued from Claude.ai.
-  Grants access to most resources except the Activity Feed.
-- **Admin Key** (`sk-ant-admin01-…`) — issued from the Anthropic
-  Console. **Only valid on the Activity Feed.** All other endpoints
-  reject it.
+- **Compliance Access Key** (`sk-ant-api01-…`) — created in claude.ai
+  (Organization settings → API) by a primary owner or organisation
+  owner. Reaches **every** endpoint, including the Activity Feed. This
+  is the primary credential.
+- **Admin API key** (`sk-ant-admin01-…`) — created in Claude Console.
+  Reaches the **Activity Feed only**; every other endpoint returns 403.
+  It carries `read:compliance_activities` only if the Compliance API
+  was already enabled for the organisation when the key was created.
+
+Four scopes exist, immutable once a key is created:
+`read:compliance_activities`, `read:compliance_user_data` (chats,
+messages, files, projects, **sessions**, org users, group members),
+`delete:compliance_user_data`, and `read:compliance_org_data` (orgs,
+roles, groups, effective settings). The separate
+`read:compliance_org_settings` scope was **retired 2026-06-30**; a key
+carrying only it now 403s on the settings endpoint.
 
 The SDK does **not** check the key prefix locally before calling an
 endpoint. The server enforces; the client labels. A `401` is an invalid
@@ -228,7 +240,17 @@ issue first.
 | 14  | `user_ids[]` length on `GET /apps/chats` validated client-side (1–10). Other server-side rules not duplicated.                                        | 2026-05-13 | locked |
 | 15  | Concrete transports without abstract bases. ABCs deleted; resources type-hint `SyncTransport` / `AsyncTransport` directly. See [ADR-0001](adr/0001-concrete-transports-without-abstract-bases.md). | 2026-05-13 | locked |
 | 16  | Response dataclass parsing via `parse_with_extra(cls, body)` over `dataclasses.fields(cls)`. No per-field coercion, no nested-type recursion. See [ADR-0002](adr/0002-response-dataclass-parsing-via-dataclasses-fields.md). | 2026-05-13 | locked |
-| 17  | Hosted spec at <https://platform.claude.com/docs/en/api/compliance> is authoritative. PDF at the repo root is a point-in-time reference for diffing only and may lag behind live behaviour. | 2026-06-01 | locked |
+| 17  | Hosted docs at <https://platform.claude.com/docs/en/manage-claude/compliance-api> are authoritative. Snapshotted to `spec-snapshots/<date>/` by `scripts/snapshot_spec.py` so upstream changes are diffable; the Rev K PDF is superseded and retained only as provenance for ADR-0003. | 2026-09-04 | locked |
+| 18  | Send `anthropic-version` on every request, default `2023-06-01`, overridable per client. Reverses the Phase-0 omission; **verified against production 2026-09-07** — the earlier 404 does not reproduce. See [ADR-0004](adr/0004-send-anthropic-version-header.md). | 2026-09-04 | locked |
+| 19  | `organizations.list()` returns `OffsetPage[Organization]` with a sibling `iter()`, matching every other paginated resource. Breaking change from the bare `list[Organization]`, taken because the endpoint is now paginated and the old shape silently truncated past 1,000 organisations. | 2026-09-04 | locked |
+| 20  | Session and chat message `content` blocks stay `list[dict[str, Any]]` rather than typed block dataclasses, so unrecognised block types pass through untouched. | 2026-09-04 | locked |
+| 21  | Local and remote sessions are separate resource groups, not one `sessions` group with a `kind` switch. Their endpoints, filters, payloads, rate limits, and error catalogues all differ. See [ADR-0005](adr/0005-local-and-remote-sessions-are-separate-resource-groups.md). | 2026-09-04 | locked |
+| 22  | Two local-session conditions are refined by **message substring**, against the API's general "match on `error.type`" advice, because the type genuinely cannot distinguish them. Confined to `LocalSessionsUnavailableError` and `LocalSessionsRetentionUnavailableError`. See [ADR-0006](adr/0006-message-based-error-refinement-for-local-sessions.md). | 2026-09-04 | locked |
+| 23  | `APIError.retryable` is a class-level marker (`None` = use the status rules, `False` = never retry). Ranks below the server's `x-should-retry` header and above the status set. | 2026-09-04 | locked |
+| 24  | Server `anthropic-ratelimit-*` headers constrain the limiter; the local sliding window is only an upper bound and is honoured even when `rate_limit_rpm=0`. No proportional slowdown — `remaining` is exposed so callers set their own policy. See [ADR-0007](adr/0007-server-reported-rate-limits-over-local-token-bucket.md). | 2026-09-04 | locked |
+| 25  | `Retry-After` is a floor on the retry delay, not a replacement, because the remote-session budget sends `1` as a minimum rather than a real reset. | 2026-09-04 | locked |
+| 26  | Compliance Access Key (`sk-ant-api01-`) is the primary credential and reaches every endpoint; an Admin API key reaches the Activity Feed only. Reverses the Phase-0 framing that treated the admin key as primary. | 2026-09-04 | locked |
+| 27  | `ANTHROPIC_COMPLIANCE_ACCESS_KEY` is read first, with the legacy `ANTHROPIC_COMPLIANCE_API_KEY` kept as a fallback rather than swapped, so existing deployments do not break silently. | 2026-09-04 | locked |
 
 Promote any of these to a full ADR (`adr/NNNN-…md`) once it acquires
 a real follow-up discussion. The table is the index; the ADR is the
@@ -238,27 +260,56 @@ extended argument.
 
 ## 5. Spec anchors
 
-Quick reference points lifted from the **hosted spec**. The PDF at
-the repo root captures Rev K (2026-05-04) for diff purposes; entries
-here track current live behaviour. If anything below changes in the
-hosted spec, update it here.
+Quick reference points lifted from the **hosted docs**. Entries here
+track current live behaviour; `spec-snapshots/<date>/` holds the
+verbatim pages each was taken from. If anything below changes in the
+hosted docs, update it here and take a fresh snapshot.
 
 - **Rate limit:** 600 requests per minute per **parent organisation**
   (shared budget across all Compliance Access Keys and Admin API keys
   under the parent, across every `/v1/compliance/*` endpoint). The
   PDF says "per API key" — that's stale.
-- **Two key types:** `sk-ant-api01-` (Compliance Access — most resources)
-  and `sk-ant-admin01-` (Admin — only valid on the Activity Feed).
+- **Rate-limit headers:** `anthropic-ratelimit-requests-limit`,
+  `-remaining`, and `-reset` (RFC 3339) on every authenticated
+  response. The remote-session endpoints carry a **second** budget on
+  top of the shared one; its 429 always sends `retry-after: 1` as a
+  minimum, and its `anthropic-ratelimit-*` headers describe the shared
+  limit rather than the exhausted one.
+- **Two key types:** `sk-ant-api01-` (Compliance Access — every
+  endpoint) and `sk-ant-admin01-` (Admin API — Activity Feed only).
+- **Env vars:** the docs use `ANTHROPIC_COMPLIANCE_ACCESS_KEY`; the SDK
+  reads that first and falls back to the legacy
+  `ANTHROPIC_COMPLIANCE_API_KEY` it shipped with.
 - **Two pagination styles:** cursor (`after_id` / `before_id`) on
   Activity Feed, Chats, Messages; opaque `page` token on everything
   else.
-- **`GET /apps/chats`** requires `user_ids[]`, length 1–10.
+- **`GET /apps/chats`** takes an optional `user_ids[]`, length 1–10.
+  Omitting it queries the whole parent organisation, which combined with
+  `order_by=updated_at` is the recommended incremental-export shape.
+  `user_ids[]` with any `updated_at.*` bound is rejected after
+  2026-09-22.
 - **`DELETE /apps/projects/{id}`** returns `409` when chats are still
   attached.
-- **`GET /organizations`** has no pagination; errors when the result
-  would exceed 1,000 organisations.
+- **`GET /organizations`** is offset paginated (`page` / `next_page`,
+  `limit` default and max 1,000).
+- **Sessions** split into two families: local (`/apps/sessions/local`,
+  `clls_`, sessions on users' machines — Cowork, Claude Code, Claude
+  Science, Claude for M365) and remote (`/apps/sessions/remote`,
+  `cse_`, Cowork on claude.ai web/mobile). Both are read-only, page
+  with `page` / `next_page`, and return **no `has_more`**. The remote
+  endpoints carry a second rate-limit budget on top of the shared 600
+  rpm.
+- **`GET /organizations/{id}/settings`** returns the *enforced* state,
+  with rows an organisation's admins cannot change **omitted**. A
+  missing row is "not controllable", not "off". Requires
+  `read:compliance_org_data` since `read:compliance_org_settings` was
+  retired 2026-06-30. Its `organization_id` is a bare UUID, unlike the
+  `org_`-prefixed form on activity, chat, and project records.
 - **Error shape:** `{"error": {"type": "...", "message": "..."}}`.
-- **Request headers:** only `x-api-key` is required by the spec. The
-  Messages API `anthropic-version` header is **not** used by the
-  Compliance API — sending it routes the request to a different
-  surface and 404s the `/v1/compliance/*` paths.
+- **Request headers:** `x-api-key` and `anthropic-version` on every
+  request. The SDK sends `anthropic-version: 2023-06-01` by default,
+  overridable (or suppressible with `None`) via the client's
+  `anthropic_version` keyword. This reverses the Phase-0 decision to
+  omit the header, which was taken from a 404 observed against
+  production and is contradicted by the current docs — see
+  [ADR-0004](adr/0004-send-anthropic-version-header.md).

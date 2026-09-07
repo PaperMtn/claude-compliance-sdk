@@ -38,6 +38,34 @@ maintainer first.
   (403), and a 401 is always `InvalidAPIKeyError`. The client refines a
   403 via `error.type`/message; the server is the source of truth. This
   supersedes the original Phase-0 "401 split".
+- **`anthropic-version` is sent on every request (ADR-0004).** Default
+  `2023-06-01`, overridable via the `anthropic_version` client kwarg,
+  suppressible with `None`. This **reverses** the Phase-0 decision to
+  omit it. Do not re-remove it on the strength of the old CONTEXT.md
+  note or the old test names.
+- **Compliance Access Key (`sk-ant-api01-`) is the primary credential.**
+  It reaches every endpoint. An Admin API key (`sk-ant-admin01-`)
+  reaches the Activity Feed *only* and 403s everywhere else. Do not
+  describe `activities` as "admin key only" — that is backwards.
+- **Every paginated resource exposes `list()` + `iter()`.**
+  `organizations.list()` returns an `OffsetPage`, not a bare list; it
+  was changed in 0.3.0 because the endpoint became paginated and the
+  old shape silently truncated.
+- **Sessions are two resource groups, not one (ADR-0005).**
+  `local_sessions` and `remote_sessions`. Do not merge them: their
+  filters, payloads, rate limits, and errors all differ, and a merged
+  surface would make invalid parameter combinations expressible.
+- **Message-substring error matching is confined to two local-session
+  cases (ADR-0006).** Everywhere else, match on `error.type`. Do not
+  extend the pattern to conditions the type can already distinguish.
+- **Rate limiting is server-led (ADR-0007).** The transport observes
+  `anthropic-ratelimit-*` on every response and waits for the reset
+  when `remaining` hits zero. `rate_limit_rpm=0` disables only the
+  *local* window. Do not add proportional throttling — `remaining` is
+  exposed via `client.rate_limit_status` so callers own that policy.
+- **`Retry-After` is a floor, not a replacement.** The remote-session
+  budget sends `1` as a minimum wait; treating it as the whole delay
+  burns the retry budget in three seconds.
 - **Admin-key local gate:** **skipped.** Do not pre-flight check the
   key prefix before calling admin-only endpoints. Let the server 401
   and surface that as `InvalidAPIKeyError` / `InsufficientScopeError`.
@@ -57,11 +85,12 @@ For a full decision log see **CONTEXT.md** § Design decisions.
 ## Architecture in one paragraph
 
 `ComplianceClient` (sync) and `AsyncComplianceClient` (async) hold a
-single transport (`_internal/transport.py`) and expose ten resource
+single transport (`_internal/transport.py`) and expose twelve resource
 group attributes (`activities`, `chats`, `files`, `generated_files`,
 `artifacts`, `projects`, `project_documents`, `organizations`, `roles`,
-`groups`). Each resource group is a thin class that takes a transport
-in its constructor and calls `transport.request(...)`. Pagination
+`groups`, `local_sessions`, `remote_sessions`). Each resource group is
+a thin class that takes a transport in its constructor and calls
+`transport.request(...)`. Pagination
 helpers and download helpers live under `_internal/`. Errors live in
 `exceptions.py` at package root. The two clients share dataclasses and
 helpers — only the I/O layer differs.
@@ -193,13 +222,16 @@ helpers — only the I/O layer differs.
 - **PLAN.md** — phased implementation plan and current progress.
 - **CONTRIBUTING.md** — contributor-facing version of the conventions
   in this file (use that one when explaining to humans).
-- **<https://platform.claude.com/docs/en/api/compliance>** — the live
-  hosted spec. **Authoritative** when CONTEXT.md or the PDF disagrees.
-  Updated as Anthropic ships changes; the PDF lags.
-- **`2026-05-04 Anthropic Compliance API docs.pdf`** — point-in-time
-  spec export (Rev K). Useful as a stable reference for diffing, but
-  may not match current live API behaviour. When the PDF and the
-  hosted spec disagree, the hosted spec wins.
+- **<https://platform.claude.com/docs/en/manage-claude/compliance-api>**
+  — the live hosted docs. **Authoritative** whenever anything else
+  disagrees. Rewritten in place as Anthropic ships changes, with no
+  version history of its own.
+- **`spec-snapshots/<date>/`** — committed markdown snapshots of the
+  hosted docs, taken by `scripts/snapshot_spec.py`. Use the newest
+  snapshot for response shapes and parameter lists, and
+  `git diff` between two snapshots to see what changed upstream. Each
+  directory has a `MANIFEST.md` with source URLs and checksums.
+  `activity-types.txt` is the sorted activity-type enum.
 - **`adr/`** — architecture decisions worth preserving past a single
   PR. Kept in the repo for contributors; not published to the docs
   site.

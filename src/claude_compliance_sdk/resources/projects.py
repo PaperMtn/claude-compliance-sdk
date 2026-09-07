@@ -56,9 +56,12 @@ class Project:
         name: Project name.
         created_at: RFC 3339 creation timestamp.
         updated_at: RFC 3339 last-update timestamp.
-        organization_id: Owning organisation's tagged ID.
         is_private: ``True`` when the project is visible only to the
             creator and specified collaborators.
+        organization_id: Owning organisation's tagged ID.
+            **Deprecated** by the API in favour of ``organization_uuid``.
+        organization_uuid: Owning organisation's UUID. Prefer this over
+            ``organization_id``.
         user: Creator info (``id``, ``email_address``) or ``None`` when
             the creator's account has been deleted. Kept as a raw dict.
         extra: Any additional fields the API adds in a later revision.
@@ -68,8 +71,9 @@ class Project:
     name: str
     created_at: str
     updated_at: str
-    organization_id: str
     is_private: bool
+    organization_id: str | None = None
+    organization_uuid: str | None = None
     user: dict[str, Any] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -124,7 +128,17 @@ class ProjectAttachment:
         created_at: RFC 3339 creation timestamp.
         filename: Display name.
         mime_type: MIME type. ``"text/plain"`` for project docs;
-            otherwise whatever the user uploaded.
+            otherwise whatever the user uploaded. Describes the *stored*
+            content, which for some documents is extracted text rather
+            than the original upload.
+        md5: Lowercase hex MD5 of the stored content, when recorded.
+            ``project_file`` entries only. Use the file metadata
+            endpoint for the authoritative value.
+        size_bytes: Size of the stored content, when recorded.
+            ``project_file`` entries only.
+        updated_at: Last-modified timestamp. ``project_doc`` entries
+            only, and reserved for future use — currently always
+            ``None``.
         extra: Any additional fields the API adds in a later revision.
     """
 
@@ -133,11 +147,59 @@ class ProjectAttachment:
     created_at: str
     filename: str
     mime_type: str
+    md5: str | None = None
+    size_bytes: int | None = None
+    updated_at: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, body: Mapping[str, Any]) -> "ProjectAttachment":
         """Build a `ProjectAttachment` from one decoded record."""
+        return parse_with_extra(cls, body)
+
+
+@dataclass
+class ProjectCollaborator:
+    """One active role assignment on a project.
+
+    The principal is a discriminated union on `type`, so the field that
+    identifies *who* differs by variant:
+
+    * ``"user"`` — an individual user. `user_id` carries the ID, or is
+      ``None`` when the account is gone.
+    * ``"group"`` — an RBAC group. `group_id` carries the ID.
+    * ``"organization"`` — an organisation-wide grant. Neither ID is
+      set; the grant covers every member.
+    * ``"organization_role"`` — everyone holding an organisation-level
+      role. `organization_role` names it.
+
+    Attributes:
+        type: Discriminator. Kept as a plain string so a principal kind
+            that has not shipped yet passes through rather than
+            raising.
+        role: Role granted on the project — ``admin``, ``editor``,
+            ``owner``, or ``viewer``.
+        granted_at: RFC 3339 timestamp of when access was granted.
+        user_id: Set on ``user`` grants; ``None`` elsewhere, and also
+            ``None`` on a ``user`` grant whose account no longer
+            exists.
+        group_id: Set on ``group`` grants; ``None`` elsewhere.
+        organization_role: Set on ``organization_role`` grants; ``None``
+            elsewhere.
+        extra: Any additional fields the API adds in a later revision.
+    """
+
+    type: str
+    role: str
+    granted_at: str
+    user_id: str | None = None
+    group_id: str | None = None
+    organization_role: str | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, body: Mapping[str, Any]) -> "ProjectCollaborator":
+        """Build a `ProjectCollaborator` from one decoded record."""
         return parse_with_extra(cls, body)
 
 
@@ -189,6 +251,10 @@ def _build_attachments_params(*, limit: int | None, page: str | None) -> dict[st
 
 def _project_path(project_id: str) -> str:
     return f"{PROJECTS_PATH}/{project_id}"
+
+
+def _collaborators_path(project_id: str) -> str:
+    return f"{PROJECTS_PATH}/{project_id}/collaborators"
 
 
 def _attachments_path(project_id: str) -> str:
@@ -339,6 +405,49 @@ class Projects:
             params=_build_attachments_params(limit=limit, page=None),
         )
 
+    def list_collaborators(
+        self,
+        project_id: str,
+        *,
+        limit: int | None = None,
+        page: str | None = None,
+    ) -> OffsetPage[ProjectCollaborator]:
+        """Fetch one page of a project's role assignments.
+
+        Each entry is one active grant, and the principal is a
+        discriminated union — branch on ``type`` before reading
+        ``user_id`` / ``group_id`` / ``organization_role``.
+
+        Args:
+            project_id: Tagged project identifier (``claude_proj_...``).
+            limit: Maximum results per page (default 20, max 100).
+            page: Opaque token from a prior response's ``next_page``.
+
+        Returns:
+            One `OffsetPage` of `ProjectCollaborator` objects, sorted
+            by ``granted_at`` ascending.
+        """
+        body = self._transport.request(
+            "GET",
+            _collaborators_path(project_id),
+            params=_build_attachments_params(limit=limit, page=page),
+        )
+        return OffsetPage.from_dict(body, ProjectCollaborator.from_dict)
+
+    def iter_collaborators(
+        self,
+        project_id: str,
+        *,
+        limit: int | None = None,
+    ) -> Iterator[ProjectCollaborator]:
+        """Iterate every collaborator on a project, auto-paginating."""
+        return iter_all_offset_sync(
+            self._transport,
+            _collaborators_path(project_id),
+            ProjectCollaborator.from_dict,
+            params=_build_attachments_params(limit=limit, page=None),
+        )
+
 
 class AsyncProjects:
     """Asynchronous client for the Projects endpoints."""
@@ -438,5 +547,34 @@ class AsyncProjects:
             self._transport,
             _attachments_path(project_id),
             ProjectAttachment.from_dict,
+            params=_build_attachments_params(limit=limit, page=None),
+        )
+
+    async def list_collaborators(
+        self,
+        project_id: str,
+        *,
+        limit: int | None = None,
+        page: str | None = None,
+    ) -> OffsetPage[ProjectCollaborator]:
+        """Async analogue of `list_collaborators`."""
+        body = await self._transport.request(
+            "GET",
+            _collaborators_path(project_id),
+            params=_build_attachments_params(limit=limit, page=page),
+        )
+        return OffsetPage.from_dict(body, ProjectCollaborator.from_dict)
+
+    def iter_collaborators(
+        self,
+        project_id: str,
+        *,
+        limit: int | None = None,
+    ) -> AsyncIterator[ProjectCollaborator]:
+        """Async analogue of `iter_collaborators`."""
+        return iter_all_offset_async(
+            self._transport,
+            _collaborators_path(project_id),
+            ProjectCollaborator.from_dict,
             params=_build_attachments_params(limit=limit, page=None),
         )

@@ -6,17 +6,18 @@ and resource group attributes are otherwise identical so callers can
 swap one client for the other without changing call sites.
 """
 
-import os
 from types import TracebackType
 
+from claude_compliance_sdk._internal.rate_limit import RateLimitSnapshot
 from claude_compliance_sdk._internal.transport import AsyncTransport
 from claude_compliance_sdk.client import (
-    API_KEY_ENV_VAR,
+    DEFAULT_ANTHROPIC_VERSION,
     DEFAULT_BASE_URL,
     DEFAULT_MAX_DOWNLOAD_BYTES,
     DEFAULT_MAX_RETRIES,
     DEFAULT_RATE_LIMIT_RPM,
     DEFAULT_TIMEOUT_SECONDS,
+    resolve_api_key,
 )
 from claude_compliance_sdk.resources.activities import AsyncActivities
 from claude_compliance_sdk.resources.artifacts import AsyncArtifacts
@@ -24,9 +25,11 @@ from claude_compliance_sdk.resources.chats import AsyncChats
 from claude_compliance_sdk.resources.files import AsyncFiles
 from claude_compliance_sdk.resources.generated_files import AsyncGeneratedFiles
 from claude_compliance_sdk.resources.groups import AsyncGroups
+from claude_compliance_sdk.resources.local_sessions import AsyncLocalSessions
 from claude_compliance_sdk.resources.organizations import AsyncOrganizations
 from claude_compliance_sdk.resources.project_documents import AsyncProjectDocuments
 from claude_compliance_sdk.resources.projects import AsyncProjects
+from claude_compliance_sdk.resources.remote_sessions import AsyncRemoteSessions
 from claude_compliance_sdk.resources.roles import AsyncRoles
 
 
@@ -38,10 +41,13 @@ class AsyncComplianceClient:
     ``httpx.AsyncClient`` is closed cleanly on exit.
 
     Args:
-        api_key: A Compliance Access Key (``sk-ant-api01-...``) or an
-            Admin key (``sk-ant-admin01-...``). If omitted, the value
-            of the ``ANTHROPIC_COMPLIANCE_API_KEY`` environment variable
-            is used.
+        api_key: A **Compliance Access Key** (``sk-ant-api01-...``),
+            created in claude.ai, which reaches every endpoint. An
+            **Admin API key** (``sk-ant-admin01-...``) also works but
+            reaches the Activity Feed *only* — every other endpoint
+            returns 403. If omitted, ``ANTHROPIC_COMPLIANCE_ACCESS_KEY``
+            is read from the environment, falling back to the legacy
+            ``ANTHROPIC_COMPLIANCE_API_KEY``.
         base_url: Override the API host. Defaults to the Anthropic
             production host.
         timeout: Per-request timeout in seconds. Default 30.
@@ -91,19 +97,16 @@ class AsyncComplianceClient:
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
         max_retries: int = DEFAULT_MAX_RETRIES,
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
+        anthropic_version: str | None = DEFAULT_ANTHROPIC_VERSION,
     ) -> None:
-        resolved_key = api_key if api_key is not None else os.environ.get(API_KEY_ENV_VAR)
-        if not resolved_key:
-            raise ValueError(
-                "No API key provided. Pass api_key=... or set the "
-                f"{API_KEY_ENV_VAR} environment variable."
-            )
+        resolved_key = resolve_api_key(api_key)
         self._api_key: str = resolved_key
         self.base_url: str = base_url
         self.timeout: float = timeout
         self.max_download_bytes: int = max_download_bytes
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
+        self.anthropic_version: str | None = anthropic_version
 
         self._transport: AsyncTransport = AsyncTransport(
             api_key=resolved_key,
@@ -111,6 +114,7 @@ class AsyncComplianceClient:
             timeout=timeout,
             max_retries=max_retries,
             rate_limit_rpm=rate_limit_rpm,
+            anthropic_version=anthropic_version,
         )
 
         self.activities: AsyncActivities = AsyncActivities(self._transport)
@@ -123,10 +127,31 @@ class AsyncComplianceClient:
             self._transport, max_download_bytes=max_download_bytes
         )
         self.groups: AsyncGroups = AsyncGroups(self._transport)
+        self.local_sessions: AsyncLocalSessions = AsyncLocalSessions(self._transport)
         self.organizations: AsyncOrganizations = AsyncOrganizations(self._transport)
         self.project_documents: AsyncProjectDocuments = AsyncProjectDocuments(self._transport)
         self.projects: AsyncProjects = AsyncProjects(self._transport)
+        self.remote_sessions: AsyncRemoteSessions = AsyncRemoteSessions(self._transport)
         self.roles: AsyncRoles = AsyncRoles(self._transport)
+
+    @property
+    def rate_limit_status(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, or ``None``.
+
+        Populated from the ``anthropic-ratelimit-*`` headers after the
+        first response. Useful for pacing your own workers: the budget
+        is 600 requests per minute shared across **every** key under
+        the parent organisation, so ``remaining`` reflects traffic the
+        client cannot see.
+
+        ```python
+        page = client.activities.list(limit=1)
+        status = client.rate_limit_status
+        if status and status.remaining is not None and status.remaining < 50:
+            time.sleep(5)  # Back off before the shared budget runs out.
+        ```
+        """
+        return self._transport.rate_limit
 
     async def aclose(self) -> None:
         """Close the underlying async HTTP connection pool.

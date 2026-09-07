@@ -16,6 +16,7 @@ from claude_compliance_sdk import (
 )
 from claude_compliance_sdk._internal.retry import (
     DEFAULT_BASE_DELAY,
+    DEFAULT_CAP_DELAY,
     RETRYABLE_STATUSES,
     SAFE_METHODS,
     RetryPolicy,
@@ -150,14 +151,40 @@ def test_does_not_retry_other_http_errors() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_compute_delay_uses_retry_after_when_supplied() -> None:
+def test_compute_delay_uses_retry_after_when_it_exceeds_backoff() -> None:
     policy = RetryPolicy(max_retries=3)
     assert policy.compute_delay(retry_index=0, retry_after=12.5) == 12.5
 
 
-def test_compute_delay_clamps_negative_retry_after_to_zero() -> None:
-    policy = RetryPolicy(max_retries=3)
-    assert policy.compute_delay(retry_index=0, retry_after=-5.0) == 0.0
+def test_compute_delay_ignores_a_negative_retry_after() -> None:
+    # A nonsensical hint must not shorten the schedule below the
+    # backoff we would have used anyway.
+    policy = RetryPolicy(max_retries=3, jitter_ratio=0.0)
+    assert policy.compute_delay(retry_index=0, retry_after=-5.0) == DEFAULT_BASE_DELAY
+
+
+def test_compute_delay_treats_retry_after_as_a_floor_not_a_replacement() -> None:
+    # The remote-session budget always answers `retry-after: 1` as a
+    # minimum, not a real reset time. Taking it literally pinned every
+    # attempt to one second and burned the whole budget in three.
+    policy = RetryPolicy(max_retries=5, jitter_ratio=0.0)
+    assert policy.compute_delay(retry_index=0, retry_after=1.0) == 1.0
+    assert policy.compute_delay(retry_index=1, retry_after=1.0) == 2.0
+    assert policy.compute_delay(retry_index=2, retry_after=1.0) == 4.0
+
+
+def test_compute_delay_honours_a_longer_retry_after() -> None:
+    # The shared budget sends a realistic wait, which must dominate the
+    # early backoff steps rather than being escalated past.
+    policy = RetryPolicy(max_retries=5, jitter_ratio=0.0)
+    assert policy.compute_delay(retry_index=0, retry_after=25.0) == 25.0
+    assert policy.compute_delay(retry_index=1, retry_after=25.0) == 25.0
+
+
+def test_compute_delay_never_undercuts_the_floor_with_jitter() -> None:
+    policy = RetryPolicy(max_retries=5, jitter_ratio=0.25, _rng=random.Random(0))
+    for _ in range(100):
+        assert policy.compute_delay(retry_index=0, retry_after=3.0) >= 3.0
 
 
 def test_compute_delay_doubles_with_retry_index() -> None:
@@ -179,10 +206,10 @@ def test_compute_delay_caps_at_cap_delay() -> None:
 
 def test_compute_delay_applies_jitter_within_ratio() -> None:
     policy = RetryPolicy(max_retries=10, jitter_ratio=0.25, _rng=random.Random(0))
-    # backoff = 0.5; jitter band is ±0.125
+    # backoff = 1.0; jitter band is ±0.25
     for _ in range(100):
         d = policy.compute_delay(retry_index=0)
-        assert 0.375 <= d <= 0.625
+        assert 0.75 <= d <= 1.25
 
 
 def test_compute_delay_seeded_rng_is_reproducible() -> None:
@@ -203,6 +230,7 @@ def _sync_transport(max_retries: int = 3) -> SyncTransport:
         timeout=30.0,
         max_retries=max_retries,
         rate_limit_rpm=600,
+        anthropic_version="2023-06-01",
     )
 
 
@@ -213,6 +241,7 @@ def _async_transport(max_retries: int = 3) -> AsyncTransport:
         timeout=30.0,
         max_retries=max_retries,
         rate_limit_rpm=600,
+        anthropic_version="2023-06-01",
     )
 
 
@@ -593,3 +622,50 @@ async def test_async_retries_529_then_succeeds(
 
     assert result == {"data": []}
     assert len(fake_async_sleep) == 1
+
+
+def test_error_retryable_false_suppresses_a_retryable_status() -> None:
+    # 503 is in the retryable set, but the local-session retention
+    # failure depends on org settings rather than load and fails the
+    # same way on every attempt.
+    policy = RetryPolicy(max_retries=3)
+    assert policy.should_retry_status(retry_index=0, method="GET", status_code=503) is True
+    assert (
+        policy.should_retry_status(
+            retry_index=0, method="GET", status_code=503, error_retryable=False
+        )
+        is False
+    )
+
+
+def test_error_retryable_none_leaves_the_status_rules_alone() -> None:
+    policy = RetryPolicy(max_retries=3)
+    assert (
+        policy.should_retry_status(
+            retry_index=0, method="GET", status_code=503, error_retryable=None
+        )
+        is True
+    )
+
+
+def test_should_retry_header_outranks_error_retryable() -> None:
+    # The server's explicit signal is part of the API contract, so it
+    # wins over the SDK's message-based refinement in both directions.
+    policy = RetryPolicy(max_retries=3)
+    assert (
+        policy.should_retry_status(
+            retry_index=0,
+            method="GET",
+            status_code=503,
+            should_retry_header=True,
+            error_retryable=False,
+        )
+        is True
+    )
+
+
+def test_defaults_match_the_documented_fallback() -> None:
+    # The API documents "start at 1 second, double up to 60 seconds"
+    # for a 429 with no Retry-After header.
+    assert DEFAULT_BASE_DELAY == 1.0
+    assert DEFAULT_CAP_DELAY == 60.0

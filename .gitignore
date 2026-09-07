@@ -248,7 +248,9 @@ PLAN.md
 downloads/
 
 # Local
-2026-05-04 Anthropic Compliance API docs.pdf
+# Local-only archive of superseded point-in-time spec exports. The
+# live reference is spec-snapshots/, which IS committed.
+spec-archive/
 local_test
 .envrc
 gh_issues

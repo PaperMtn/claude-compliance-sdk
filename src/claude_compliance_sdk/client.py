@@ -1,7 +1,7 @@
 """Synchronous entry point for the Anthropic Compliance SDK.
 
 Exposes the ``ComplianceClient`` class: its configuration knobs and the
-ten resource group attributes through which every endpoint is reached.
+twelve resource group attributes through which every endpoint is reached.
 The request, retry, rate-limit, and pagination machinery lives in the
 transport and pagination layers under ``_internal``.
 """
@@ -9,6 +9,7 @@ transport and pagination layers under ``_internal``.
 import os
 from types import TracebackType
 
+from claude_compliance_sdk._internal.rate_limit import RateLimitSnapshot
 from claude_compliance_sdk._internal.transport import SyncTransport
 from claude_compliance_sdk.resources.activities import Activities
 from claude_compliance_sdk.resources.artifacts import Artifacts
@@ -16,9 +17,11 @@ from claude_compliance_sdk.resources.chats import Chats
 from claude_compliance_sdk.resources.files import Files
 from claude_compliance_sdk.resources.generated_files import GeneratedFiles
 from claude_compliance_sdk.resources.groups import Groups
+from claude_compliance_sdk.resources.local_sessions import LocalSessions
 from claude_compliance_sdk.resources.organizations import Organizations
 from claude_compliance_sdk.resources.project_documents import ProjectDocuments
 from claude_compliance_sdk.resources.projects import Projects
+from claude_compliance_sdk.resources.remote_sessions import RemoteSessions
 from claude_compliance_sdk.resources.roles import Roles
 
 DEFAULT_BASE_URL = "https://api.anthropic.com"
@@ -26,8 +29,39 @@ DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_RATE_LIMIT_RPM = 600
+DEFAULT_ANTHROPIC_VERSION = "2023-06-01"
 
-API_KEY_ENV_VAR = "ANTHROPIC_COMPLIANCE_API_KEY"
+# The name the hosted docs standardise on. Checked first.
+API_KEY_ENV_VAR = "ANTHROPIC_COMPLIANCE_ACCESS_KEY"
+
+# The name this SDK shipped with in 0.1.0 and 0.2.0. Still honoured so
+# existing deployments keep working; swapping outright would break them
+# silently, which is the one failure mode worth avoiding here.
+LEGACY_API_KEY_ENV_VAR = "ANTHROPIC_COMPLIANCE_API_KEY"
+
+API_KEY_ENV_VARS = (API_KEY_ENV_VAR, LEGACY_API_KEY_ENV_VAR)
+
+
+def resolve_api_key(api_key: str | None) -> str:
+    """Return an explicit key, or find one in the environment.
+
+    Checks `API_KEY_ENV_VAR` first, then the legacy name, so a
+    deployment that sets both migrates by removing the old one.
+
+    Raises:
+        ValueError: When no key is available from either source.
+    """
+    if api_key is not None:
+        return api_key
+    for name in API_KEY_ENV_VARS:
+        value = os.environ.get(name)
+        if value:
+            return value
+    raise ValueError(
+        "No API key provided. Pass api_key=... or set the "
+        f"{API_KEY_ENV_VAR} environment variable "
+        f"(the legacy {LEGACY_API_KEY_ENV_VAR} is also honoured)."
+    )
 
 
 class ComplianceClient:
@@ -38,10 +72,13 @@ class ComplianceClient:
     need to live across requests for full benefit.
 
     Args:
-        api_key: A Compliance Access Key (``sk-ant-api01-...``) or an
-            Admin key (``sk-ant-admin01-...``). If omitted, the value
-            of the ``ANTHROPIC_COMPLIANCE_API_KEY`` environment variable
-            is used.
+        api_key: A **Compliance Access Key** (``sk-ant-api01-...``),
+            created in claude.ai, which reaches every endpoint. An
+            **Admin API key** (``sk-ant-admin01-...``) also works but
+            reaches the Activity Feed *only* — every other endpoint
+            returns 403. If omitted, ``ANTHROPIC_COMPLIANCE_ACCESS_KEY``
+            is read from the environment, falling back to the legacy
+            ``ANTHROPIC_COMPLIANCE_API_KEY``.
         base_url: Override the API host. Defaults to the Anthropic
             production host. Useful for testing against a recorded
             fixture server.
@@ -85,19 +122,16 @@ class ComplianceClient:
         max_download_bytes: int = DEFAULT_MAX_DOWNLOAD_BYTES,
         max_retries: int = DEFAULT_MAX_RETRIES,
         rate_limit_rpm: int = DEFAULT_RATE_LIMIT_RPM,
+        anthropic_version: str | None = DEFAULT_ANTHROPIC_VERSION,
     ) -> None:
-        resolved_key = api_key if api_key is not None else os.environ.get(API_KEY_ENV_VAR)
-        if not resolved_key:
-            raise ValueError(
-                "No API key provided. Pass api_key=... or set the "
-                f"{API_KEY_ENV_VAR} environment variable."
-            )
+        resolved_key = resolve_api_key(api_key)
         self._api_key: str = resolved_key
         self.base_url: str = base_url
         self.timeout: float = timeout
         self.max_download_bytes: int = max_download_bytes
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
+        self.anthropic_version: str | None = anthropic_version
 
         self._transport: SyncTransport = SyncTransport(
             api_key=resolved_key,
@@ -105,6 +139,7 @@ class ComplianceClient:
             timeout=timeout,
             max_retries=max_retries,
             rate_limit_rpm=rate_limit_rpm,
+            anthropic_version=anthropic_version,
         )
 
         self.activities: Activities = Activities(self._transport)
@@ -117,10 +152,31 @@ class ComplianceClient:
             self._transport, max_download_bytes=max_download_bytes
         )
         self.groups: Groups = Groups(self._transport)
+        self.local_sessions: LocalSessions = LocalSessions(self._transport)
         self.organizations: Organizations = Organizations(self._transport)
         self.project_documents: ProjectDocuments = ProjectDocuments(self._transport)
         self.projects: Projects = Projects(self._transport)
+        self.remote_sessions: RemoteSessions = RemoteSessions(self._transport)
         self.roles: Roles = Roles(self._transport)
+
+    @property
+    def rate_limit_status(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, or ``None``.
+
+        Populated from the ``anthropic-ratelimit-*`` headers after the
+        first response. Useful for pacing your own workers: the budget
+        is 600 requests per minute shared across **every** key under
+        the parent organisation, so ``remaining`` reflects traffic the
+        client cannot see.
+
+        ```python
+        page = client.activities.list(limit=1)
+        status = client.rate_limit_status
+        if status and status.remaining is not None and status.remaining < 50:
+            time.sleep(5)  # Back off before the shared budget runs out.
+        ```
+        """
+        return self._transport.rate_limit
 
     def close(self) -> None:
         """Close the underlying HTTP connection pool.

@@ -12,6 +12,7 @@ from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, NotFo
 from claude_compliance_sdk.resources.project_documents import (
     PROJECT_DOCUMENTS_PATH,
     ProjectDocument,
+    ProjectDocumentMetadata,
 )
 
 API_KEY = "sk-ant-api01-test-key"
@@ -167,3 +168,72 @@ async def test_async_delete(async_client: AsyncComplianceClient, httpx_mock: HTT
         json={"id": DOCUMENT_ID, "type": "claude_project_document_deleted"},
     )
     assert await async_client.project_documents.delete(DOCUMENT_ID) is None
+
+
+# ---------------------------------------------------------------------------
+# .get_metadata()
+# ---------------------------------------------------------------------------
+
+SPEC_EXAMPLE_METADATA: dict[str, Any] = {
+    "id": "claude_proj_doc_01YnT8sBcWvUtXzQpMkRfDgH",
+    "claude_project_id": "claude_proj_01KGp4eZNug9ri4kE35RSppq",
+    "created_at": "2026-04-10T08:09:11Z",
+    "filename": "requirements.md",
+    "md5": "56367e4d2705cc9c025ad07424e944f0",
+    "mime_type": "text/plain",
+    "size_bytes": 2048,
+    "user": {"id": "user_01XyDMpzjS89pFZXqSFUBDr6", "email_address": "user@example.com"},
+}
+
+
+def _metadata_url(document_id: str) -> str:
+    return f"{BASE_URL}{PROJECT_DOCUMENTS_PATH}/{document_id}/metadata"
+
+
+def test_get_metadata_returns_metadata_without_content(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    # The point of this endpoint: enumerate documents without pulling
+    # every body just to read a filename or a size.
+    document_id = SPEC_EXAMPLE_METADATA["id"]
+    httpx_mock.add_response(url=_metadata_url(document_id), json=SPEC_EXAMPLE_METADATA)
+    metadata = sync_client.project_documents.get_metadata(document_id)
+    assert isinstance(metadata, ProjectDocumentMetadata)
+    assert metadata.size_bytes == 2048
+    assert metadata.mime_type == "text/plain"
+    assert metadata.claude_project_id == "claude_proj_01KGp4eZNug9ri4kE35RSppq"
+    assert not hasattr(metadata, "content")
+
+
+def test_get_metadata_tolerates_null_user(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    document_id = SPEC_EXAMPLE_METADATA["id"]
+    httpx_mock.add_response(
+        url=_metadata_url(document_id), json={**SPEC_EXAMPLE_METADATA, "user": None}
+    )
+    assert sync_client.project_documents.get_metadata(document_id).user is None
+
+
+def test_get_metadata_not_found(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
+    httpx_mock.add_response(
+        url=_metadata_url("claude_proj_doc_missing"),
+        status_code=404,
+        json={
+            "error": {
+                "type": "not_found_error",
+                "message": "No project document found with provided id, or it has already been deleted.",
+            }
+        },
+    )
+    with pytest.raises(NotFoundError):
+        sync_client.project_documents.get_metadata("claude_proj_doc_missing")
+
+
+async def test_async_get_metadata(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    document_id = SPEC_EXAMPLE_METADATA["id"]
+    httpx_mock.add_response(url=_metadata_url(document_id), json=SPEC_EXAMPLE_METADATA)
+    metadata = await async_client.project_documents.get_metadata(document_id)
+    assert metadata.md5 == "56367e4d2705cc9c025ad07424e944f0"

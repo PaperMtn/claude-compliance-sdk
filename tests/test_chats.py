@@ -6,7 +6,7 @@ and .iter() over chats, the combined chat+messages .get() endpoint,
 .iter_messages() driving the same endpoint, and .delete() with
 sync+async parity.
 
-Integration test gated on ANTHROPIC_COMPLIANCE_API_KEY.
+Integration test gated on a live Compliance Access Key.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from claude_compliance_sdk.resources.chats import (
     _build_messages_params,
     _validate_user_ids,
 )
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -105,6 +106,22 @@ def _chat_with_messages(
 
 
 # ---------------------------------------------------------------------------
+def test_chat_from_dict_allows_null_model() -> None:
+    # Legacy chats never had a model recorded; the API returns null.
+    body = {**SPEC_EXAMPLE_CHAT, "model": None}
+    chat = Chat.from_dict(body)
+    assert chat.model is None
+
+
+def test_chat_from_dict_without_organization_id() -> None:
+    # organization_id is deprecated on the wire in favour of
+    # organization_uuid, so parsing must not require it.
+    body = {k: v for k, v in SPEC_EXAMPLE_CHAT.items() if k != "organization_id"}
+    chat = Chat.from_dict(body)
+    assert chat.organization_id is None
+    assert chat.organization_uuid == SPEC_EXAMPLE_CHAT["organization_uuid"]
+
+
 # _validate_user_ids
 # ---------------------------------------------------------------------------
 
@@ -112,6 +129,12 @@ def _chat_with_messages(
 def test_validate_user_ids_accepts_1_to_10() -> None:
     for n in (1, 5, 10):
         _validate_user_ids([f"user_{i}" for i in range(n)])
+
+
+def test_validate_user_ids_accepts_none_for_org_wide() -> None:
+    # None means "every chat under the parent organisation", which is
+    # the recommended export shape. It must not raise.
+    _validate_user_ids(None)
 
 
 def test_validate_user_ids_rejects_empty() -> None:
@@ -208,6 +231,7 @@ def test_build_list_params_includes_user_ids() -> None:
         user_ids=["u1", "u2"],
         organization_ids=None,
         project_ids=None,
+        order_by=None,
         created_at_gte=None,
         created_at_gt=None,
         created_at_lte=None,
@@ -228,6 +252,7 @@ def test_build_list_params_full_filters() -> None:
         user_ids=["u1"],
         organization_ids=["org_a"],
         project_ids=["proj_a"],
+        order_by=None,
         created_at_gte="2025-01-01T00:00:00Z",
         created_at_gt=None,
         created_at_lte=None,
@@ -248,6 +273,33 @@ def test_build_list_params_full_filters() -> None:
         "updated_at.gt": "2025-02-01T00:00:00Z",
         "after_id": "cursor_abc",
         "limit": 50,
+    }
+
+
+def test_build_list_params_omits_user_ids_for_org_wide_query() -> None:
+    # user_ids[] is optional now; omitting it is an org-wide query, and
+    # the key must be absent rather than sent empty.
+    params = _build_list_params(
+        user_ids=None,
+        organization_ids=None,
+        project_ids=None,
+        order_by="updated_at",
+        created_at_gte=None,
+        created_at_gt=None,
+        created_at_lte=None,
+        created_at_lt=None,
+        updated_at_gte="2026-06-01T00:00:00Z",
+        updated_at_gt=None,
+        updated_at_lte=None,
+        updated_at_lt=None,
+        after_id=None,
+        before_id=None,
+        limit=None,
+    )
+    assert "user_ids[]" not in params
+    assert params == {
+        "order_by": "updated_at",
+        "updated_at.gte": "2026-06-01T00:00:00Z",
     }
 
 
@@ -301,6 +353,54 @@ def test_list_validates_user_ids_locally(sync_client: ComplianceClient) -> None:
         sync_client.chats.list(user_ids=[])
     with pytest.raises(ValueError):
         sync_client.chats.list(user_ids=[f"u{i}" for i in range(11)])
+
+
+def test_list_org_wide_omits_user_ids(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
+    # Omitting user_ids is the documented way to export every chat and
+    # keep the export current. Before user_ids became optional the SDK
+    # raised ValueError here and this query was unreachable.
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{CHATS_PATH}?order_by=updated_at",
+        json={
+            "data": [SPEC_EXAMPLE_CHAT],
+            "has_more": False,
+            "first_id": None,
+            "last_id": None,
+        },
+    )
+    page = sync_client.chats.list(order_by="updated_at")
+    assert len(page.data) == 1
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert "user_ids" not in request.url.query.decode()
+    assert request.url.params["order_by"] == "updated_at"
+
+
+def test_list_warns_on_user_ids_with_updated_at(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    # Rejected with HTTP 400 by the API after 2026-09-22. Warn rather
+    # than raise so working code keeps working until then.
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{CHATS_PATH}?user_ids%5B%5D=u1&updated_at.gte=2026-06-01T00%3A00%3A00Z",
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    with pytest.warns(DeprecationWarning, match="2026-09-22"):
+        sync_client.chats.list(user_ids=["u1"], updated_at_gte="2026-06-01T00:00:00Z")
+
+
+def test_list_does_not_warn_without_the_combination(
+    sync_client: ComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    import warnings as _warnings
+
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{CHATS_PATH}?user_ids%5B%5D=u1",
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    with _warnings.catch_warnings():
+        _warnings.simplefilter("error", DeprecationWarning)
+        sync_client.chats.list(user_ids=["u1"])
 
 
 def test_list_returns_cursor_page(sync_client: ComplianceClient, httpx_mock: HTTPXMock) -> None:
@@ -493,6 +593,30 @@ async def test_async_list_validates_user_ids(
         await async_client.chats.list(user_ids=[])
 
 
+async def test_async_list_org_wide_omits_user_ids(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{CHATS_PATH}?order_by=updated_at",
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    await async_client.chats.list(order_by="updated_at")
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert "user_ids" not in request.url.query.decode()
+
+
+async def test_async_list_warns_on_user_ids_with_updated_at(
+    async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{CHATS_PATH}?user_ids%5B%5D=u1&updated_at.gte=2026-06-01T00%3A00%3A00Z",
+        json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+    )
+    with pytest.warns(DeprecationWarning, match="2026-09-22"):
+        await async_client.chats.list(user_ids=["u1"], updated_at_gte="2026-06-01T00:00:00Z")
+
+
 async def test_async_list_returns_page(
     async_client: AsyncComplianceClient, httpx_mock: HTTPXMock
 ) -> None:
@@ -586,12 +710,25 @@ async def test_async_delete(async_client: AsyncComplianceClient, httpx_mock: HTT
 
 
 @pytest.mark.integration
+@requires_live_key
+def test_integration_list_chats_org_wide() -> None:
+    # The org-wide `order_by=updated_at` walk is the shape the docs
+    # recommend and the one the SDK could not express before 0.3.0, so
+    # it is the more valuable thing to verify live.
+    with ComplianceClient() as client:
+        page = client.chats.list(order_by="updated_at", limit=5)
+    assert isinstance(page, CursorPage)
+    for chat in page.data:
+        assert chat.id
+
+
+@pytest.mark.integration
+@requires_live_key
 @pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY")
-    or not os.environ.get("ANTHROPIC_COMPLIANCE_USER_ID"),
-    reason="Requires ANTHROPIC_COMPLIANCE_API_KEY and ANTHROPIC_COMPLIANCE_USER_ID.",
+    not os.environ.get("ANTHROPIC_COMPLIANCE_USER_ID"),
+    reason="Requires ANTHROPIC_COMPLIANCE_USER_ID for the user-filtered form.",
 )
-def test_integration_list_chats() -> None:
+def test_integration_list_chats_for_a_user() -> None:
     user_id = os.environ["ANTHROPIC_COMPLIANCE_USER_ID"]
     with ComplianceClient() as client:
         page = client.chats.list(user_ids=[user_id], limit=5)

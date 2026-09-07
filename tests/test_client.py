@@ -8,9 +8,10 @@ arrive in Phase 3.
 """
 
 import pytest
+from pytest_httpx import HTTPXMock
 
 from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, __version__
-from claude_compliance_sdk.client import API_KEY_ENV_VAR
+from claude_compliance_sdk.client import API_KEY_ENV_VAR, API_KEY_ENV_VARS, LEGACY_API_KEY_ENV_VAR
 
 RESOURCE_GROUPS = (
     "activities",
@@ -55,9 +56,53 @@ def test_constructor_falls_back_to_env_var(
 def test_constructor_raises_when_no_api_key_anywhere(
     client_cls: type, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.delenv(API_KEY_ENV_VAR, raising=False)
+    for name in API_KEY_ENV_VARS:
+        monkeypatch.delenv(name, raising=False)
     with pytest.raises(ValueError, match="No API key provided"):
         client_cls()
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_constructor_falls_back_to_the_legacy_env_var(
+    client_cls: type, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # 0.1.0 and 0.2.0 shipped reading ANTHROPIC_COMPLIANCE_API_KEY.
+    # Swapping outright would break those deployments silently.
+    monkeypatch.delenv(API_KEY_ENV_VAR, raising=False)
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-legacy")
+    client = client_cls()
+    assert client._api_key == "sk-ant-api01-legacy"  # noqa: SLF001
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_documented_env_var_wins_over_the_legacy_one(
+    client_cls: type, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A deployment that sets both migrates by deleting the old one, so
+    # the new name has to take precedence.
+    monkeypatch.setenv(API_KEY_ENV_VAR, "sk-ant-api01-new")
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-old")
+    client = client_cls()
+    assert client._api_key == "sk-ant-api01-new"  # noqa: SLF001
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_explicit_api_key_beats_both_env_vars(
+    client_cls: type, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(API_KEY_ENV_VAR, "sk-ant-api01-env")
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-legacy")
+    client = client_cls(api_key="sk-ant-api01-explicit")
+    assert client._api_key == "sk-ant-api01-explicit"  # noqa: SLF001
+
+
+@pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
+def test_empty_env_var_falls_through(client_cls: type, monkeypatch: pytest.MonkeyPatch) -> None:
+    # An exported-but-empty variable is a misconfiguration, not a key.
+    monkeypatch.setenv(API_KEY_ENV_VAR, "")
+    monkeypatch.setenv(LEGACY_API_KEY_ENV_VAR, "sk-ant-api01-legacy")
+    client = client_cls()
+    assert client._api_key == "sk-ant-api01-legacy"  # noqa: SLF001
 
 
 @pytest.mark.parametrize("client_cls", [ComplianceClient, AsyncComplianceClient])
@@ -94,3 +139,57 @@ def test_sync_client_supports_context_manager(fake_api_key: str) -> None:
 async def test_async_client_supports_context_manager(fake_api_key: str) -> None:
     async with AsyncComplianceClient(api_key=fake_api_key) as client:
         assert isinstance(client, AsyncComplianceClient)
+
+
+def test_rate_limit_status_is_none_before_any_request() -> None:
+    client = ComplianceClient(api_key="sk-ant-api01-test", rate_limit_rpm=0)
+    try:
+        assert client.rate_limit_status is None
+    finally:
+        client.close()
+
+
+def test_rate_limit_status_reflects_the_transport(httpx_mock: HTTPXMock) -> None:
+    # The public read-through callers use to pace their own workers.
+    client = ComplianceClient(
+        api_key="sk-ant-api01-test",
+        base_url="https://api.anthropic.test",
+        max_retries=0,
+        rate_limit_rpm=0,
+    )
+    try:
+        httpx_mock.add_response(
+            url="https://api.anthropic.test/v1/compliance/activities",
+            json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+            headers={
+                "anthropic-ratelimit-requests-limit": "600",
+                "anthropic-ratelimit-requests-remaining": "3",
+            },
+        )
+        client.activities.list()
+        status = client.rate_limit_status
+        assert status is not None
+        assert status.limit == 600
+        assert status.remaining == 3
+    finally:
+        client.close()
+
+
+async def test_async_rate_limit_status_reflects_the_transport(httpx_mock: HTTPXMock) -> None:
+    client = AsyncComplianceClient(
+        api_key="sk-ant-api01-test",
+        base_url="https://api.anthropic.test",
+        max_retries=0,
+        rate_limit_rpm=0,
+    )
+    try:
+        httpx_mock.add_response(
+            url="https://api.anthropic.test/v1/compliance/activities",
+            json={"data": [], "has_more": False, "first_id": None, "last_id": None},
+            headers={"anthropic-ratelimit-requests-remaining": "7"},
+        )
+        await client.activities.list()
+        assert client.rate_limit_status is not None
+        assert client.rate_limit_status.remaining == 7
+    finally:
+        await client.aclose()

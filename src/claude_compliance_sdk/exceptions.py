@@ -58,6 +58,8 @@ __all__ = [
     "FileTooLargeError",
     "InsufficientScopeError",
     "InternalServerError",
+    "LocalSessionsRetentionUnavailableError",
+    "LocalSessionsUnavailableError",
     "InvalidAPIKeyError",
     "NotFoundError",
     "PermissionDeniedError",
@@ -94,6 +96,12 @@ class APIError(ComplianceClientError):
         body: The decoded response body. Typically a ``dict``, but may
             be ``str`` or ``bytes`` if the body was not JSON.
     """
+
+    #: Overrides the transport's status-based retry decision when set.
+    #: ``None`` (the default) means "use the normal rules for this
+    #: status". Subclasses set ``False`` for failures that share a
+    #: retryable status but are not actually transient.
+    retryable: bool | None = None
 
     def __init__(
         self,
@@ -138,9 +146,16 @@ class APIError(ComplianceClientError):
 
         Returns:
             An `APIError` subclass instance matching the status
-            code. 401 is split between `InvalidAPIKeyError` and
-            `InsufficientScopeError`; 429 returns a
-            `RateLimitError` with ``retry_after`` populated.
+            code. A 401 is always `InvalidAPIKeyError`; a 403 is
+            refined via ``error.type`` / message; 429 returns a
+            `RateLimitError` with ``retry_after`` populated. Two
+            local-session conditions are refined by message text
+            because they share an ``error.type`` with unrelated
+            failures: a 404 reading ``Local sessions are not
+            available.`` becomes `LocalSessionsUnavailableError`, and a
+            503 ``overloaded_error`` about retention overrides becomes
+            `LocalSessionsRetentionUnavailableError`, which is not
+            retried.
         """
         headers = headers or {}
         request_id = _lookup_header(headers, "request-id") or _lookup_header(
@@ -156,7 +171,7 @@ class APIError(ComplianceClientError):
         elif status_code == 403:
             klass = _classify_permission(error_type, error_message)
         elif status_code == 404:
-            klass = NotFoundError
+            klass = _classify_not_found(error_message)
         elif status_code == 409:
             klass = ConflictError
         elif status_code == 429:
@@ -173,7 +188,7 @@ class APIError(ComplianceClientError):
         elif 400 <= status_code < 500:
             klass = APIStatusError
         elif 500 <= status_code < 600:
-            klass = InternalServerError
+            klass = _classify_server_error(status_code, error_type, error_message)
         else:
             klass = APIError
 
@@ -219,6 +234,21 @@ class InsufficientScopeError(PermissionDeniedError):
 
 class NotFoundError(APIError):
     """HTTP 404 — the addressed resource does not exist."""
+
+
+class LocalSessionsUnavailableError(NotFoundError):
+    """The local session endpoints are unavailable to the parent org.
+
+    Returned as a 404 ``not_found_error`` with the message
+    ``Local sessions are not available.`` on *every* local-session call,
+    including the list, so it does not mean a particular session is
+    gone. No customer-side key, scope, or setting changes it, and it can
+    be temporary.
+
+    Distinguished from an ordinary `NotFoundError` so that a caller
+    walking a queue of session IDs can keep the queue instead of
+    discarding IDs that are still perfectly valid.
+    """
 
 
 class ConflictError(APIError):
@@ -272,6 +302,24 @@ class InternalServerError(APIError):
 # ---------------------------------------------------------------------------
 # Transport errors
 # ---------------------------------------------------------------------------
+
+
+class LocalSessionsRetentionUnavailableError(InternalServerError):
+    """A retention or data-handling setting could not be evaluated.
+
+    Returned as a 503 ``overloaded_error`` whose message mentions
+    retention overrides. Unlike the other two 503 bodies on the local
+    session endpoints, this one depends on the organisation's data and
+    settings rather than on load, so it can persist for an extended
+    period and is **not** retried.
+
+    The documented handling is to stop rather than wait: on the list
+    endpoint, restart later without ``page`` or narrow the ``created_at``
+    window; on the retrieve and messages endpoints, skip that session
+    and come back to it on a later run.
+    """
+
+    retryable = False
 
 
 class APIConnectionError(ComplianceClientError):
@@ -347,6 +395,32 @@ def _extract_error_fields(body: Any) -> tuple[str | None, str | None]:
         error_type if isinstance(error_type, str) else None,
         error_message if isinstance(error_message, str) else None,
     )
+
+
+# The local session endpoints are the one documented place where the
+# API asks callers to tell responses apart by message text rather than
+# by ``error.type`` — several distinct conditions share a type. Matching
+# on a distinctive substring rather than the full sentence keeps this
+# working when the wording is reworded, which the docs warn it may be.
+# See ADR-0006.
+_LOCAL_SESSIONS_UNAVAILABLE = "local sessions are not available"
+_RETENTION_OVERRIDES = "retention overrides"
+
+
+def _classify_not_found(error_message: str | None) -> type[NotFoundError]:
+    lowered = (error_message or "").lower()
+    if _LOCAL_SESSIONS_UNAVAILABLE in lowered:
+        return LocalSessionsUnavailableError
+    return NotFoundError
+
+
+def _classify_server_error(
+    status_code: int, error_type: str | None, error_message: str | None
+) -> type[APIError]:
+    if status_code == 503 and error_type == "overloaded_error":
+        if _RETENTION_OVERRIDES in (error_message or "").lower():
+            return LocalSessionsRetentionUnavailableError
+    return InternalServerError
 
 
 def _classify_permission(

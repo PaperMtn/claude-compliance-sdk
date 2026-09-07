@@ -19,7 +19,9 @@ import httpx
 
 from claude_compliance_sdk._internal.rate_limit import (
     AsyncSlidingWindowLimiter,
+    RateLimitSnapshot,
     SlidingWindowLimiter,
+    parse_rate_limit_headers,
 )
 from claude_compliance_sdk._internal.retry import RetryPolicy
 from claude_compliance_sdk.exceptions import (
@@ -39,11 +41,16 @@ def _build_user_agent() -> str:
     )
 
 
-def _build_default_headers(api_key: str) -> dict[str, str]:
-    return {
+def _build_default_headers(api_key: str, anthropic_version: str | None) -> dict[str, str]:
+    headers = {
         "x-api-key": api_key,
         "User-Agent": _build_user_agent(),
     }
+    # A caller can pass None to suppress the header entirely, which is
+    # the escape hatch if a route ever rejects it again (see ADR-0004).
+    if anthropic_version:
+        headers["anthropic-version"] = anthropic_version
+    return headers
 
 
 def _decode_body(response: httpx.Response) -> Any:
@@ -100,6 +107,8 @@ class SyncTransport:
         rate_limit_rpm: Maximum requests per rolling 60-second window.
             ``0`` (or negative) disables the limiter. Smooths bursty
             callers; the server remains the source of truth.
+        anthropic_version: Value for the ``anthropic-version`` header,
+            sent on every request. ``None`` or empty suppresses it.
     """
 
     def __init__(
@@ -110,16 +119,27 @@ class SyncTransport:
         timeout: float,
         max_retries: int,
         rate_limit_rpm: int,
+        anthropic_version: str | None,
     ) -> None:
         self._client: httpx.Client = httpx.Client(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key),
+            headers=_build_default_headers(api_key, anthropic_version),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
         self._retry_policy: RetryPolicy = RetryPolicy(max_retries=max_retries)
         self._rate_limiter: SlidingWindowLimiter = SlidingWindowLimiter(rpm=rate_limit_rpm)
+
+    @property
+    def rate_limit(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, if one was seen.
+
+        Read from the ``anthropic-ratelimit-*`` response headers. The
+        budget is shared across every key under the parent
+        organisation, so ``remaining`` accounts for other clients too.
+        """
+        return self._rate_limiter.snapshot
 
     def request(
         self,
@@ -168,6 +188,7 @@ class SyncTransport:
                     ),
                     stream=stream,
                 )
+                self._rate_limiter.observe(parse_rate_limit_headers(response.headers))
             except httpx.HTTPError as exc:
                 if self._retry_policy.should_retry_exception(
                     retry_index=retry_index, method=method, exc=exc
@@ -187,6 +208,7 @@ class SyncTransport:
                     method=method,
                     status_code=response.status_code,
                     should_retry_header=_parse_should_retry(response.headers),
+                    error_retryable=api_error.retryable,
                 ):
                     retry_after = (
                         api_error.retry_after if isinstance(api_error, RateLimitError) else None
@@ -224,11 +246,12 @@ class AsyncTransport:
         timeout: float,
         max_retries: int,
         rate_limit_rpm: int,
+        anthropic_version: str | None,
     ) -> None:
         self._client: httpx.AsyncClient = httpx.AsyncClient(
             base_url=base_url,
             timeout=timeout,
-            headers=_build_default_headers(api_key),
+            headers=_build_default_headers(api_key, anthropic_version),
         )
         self.max_retries: int = max_retries
         self.rate_limit_rpm: int = rate_limit_rpm
@@ -236,6 +259,16 @@ class AsyncTransport:
         self._rate_limiter: AsyncSlidingWindowLimiter = AsyncSlidingWindowLimiter(
             rpm=rate_limit_rpm
         )
+
+    @property
+    def rate_limit(self) -> RateLimitSnapshot | None:
+        """The server's last reported request budget, if one was seen.
+
+        Read from the ``anthropic-ratelimit-*`` response headers. The
+        budget is shared across every key under the parent
+        organisation, so ``remaining`` accounts for other clients too.
+        """
+        return self._rate_limiter.snapshot
 
     async def request(
         self,
@@ -258,6 +291,7 @@ class AsyncTransport:
                     ),
                     stream=stream,
                 )
+                self._rate_limiter.observe(parse_rate_limit_headers(response.headers))
             except httpx.HTTPError as exc:
                 if self._retry_policy.should_retry_exception(
                     retry_index=retry_index, method=method, exc=exc
@@ -277,6 +311,7 @@ class AsyncTransport:
                     method=method,
                     status_code=response.status_code,
                     should_retry_header=_parse_should_retry(response.headers),
+                    error_retryable=api_error.retryable,
                 ):
                     retry_after = (
                         api_error.retry_after if isinstance(api_error, RateLimitError) else None

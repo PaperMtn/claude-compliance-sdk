@@ -10,6 +10,7 @@ from pytest_httpx import HTTPXMock
 
 from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, NotFoundError, OffsetPage
 from claude_compliance_sdk.resources.roles import ORGANIZATIONS_PATH, Permission, Role
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -255,13 +256,10 @@ async def test_async_iter_permissions(
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY"),
-    reason="Requires ANTHROPIC_COMPLIANCE_API_KEY.",
-)
+@requires_live_key
 def test_integration_list_roles() -> None:
     with ComplianceClient() as client:
-        orgs = client.organizations.list()
+        orgs = client.organizations.list().data
         if not orgs:
             pytest.skip("No organisations available to list roles for.")
         page = client.roles.list(orgs[0].uuid, limit=5)

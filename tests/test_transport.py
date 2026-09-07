@@ -44,6 +44,7 @@ def sync_transport() -> SyncTransport:
         timeout=30.0,
         max_retries=0,
         rate_limit_rpm=600,
+        anthropic_version="2023-06-01",
     )
     yield transport
     transport.close()
@@ -57,6 +58,7 @@ async def async_transport() -> AsyncTransport:
         timeout=30.0,
         max_retries=0,
         rate_limit_rpm=600,
+        anthropic_version="2023-06-01",
     )
     yield transport
     await transport.aclose()
@@ -130,15 +132,54 @@ def test_sync_injects_default_headers(sync_transport: SyncTransport, httpx_mock:
     assert request.headers["user-agent"].startswith(f"claude-compliance-sdk/{_SDK_VERSION}")
 
 
-def test_sync_does_not_inject_anthropic_version_header(
+def test_sync_injects_anthropic_version_header(
     sync_transport: SyncTransport, httpx_mock: HTTPXMock
 ) -> None:
-    # The Compliance API spec lists only x-api-key as required, and
-    # production /v1/compliance/* routes 404 when the Messages-API
-    # `anthropic-version` header is present. The SDK must never send
-    # it by default.
+    # The hosted docs require `anthropic-version` on every request and
+    # every published example sends it. This reverses the earlier
+    # decision to omit it; see ADR-0004.
     httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={})
     sync_transport.request("GET", PATH)
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert request.headers["anthropic-version"] == "2023-06-01"
+
+
+def test_anthropic_version_can_be_overridden(httpx_mock: HTTPXMock) -> None:
+    transport = SyncTransport(
+        api_key=API_KEY,
+        base_url=BASE_URL,
+        timeout=5.0,
+        max_retries=0,
+        rate_limit_rpm=0,
+        anthropic_version="2099-01-01",
+    )
+    try:
+        httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={})
+        transport.request("GET", PATH)
+    finally:
+        transport.close()
+    request = httpx_mock.get_request()
+    assert request is not None
+    assert request.headers["anthropic-version"] == "2099-01-01"
+
+
+def test_anthropic_version_none_suppresses_the_header(httpx_mock: HTTPXMock) -> None:
+    # Escape hatch: if a route ever rejects the header again, callers
+    # can turn it off without patching internals.
+    transport = SyncTransport(
+        api_key=API_KEY,
+        base_url=BASE_URL,
+        timeout=5.0,
+        max_retries=0,
+        rate_limit_rpm=0,
+        anthropic_version=None,
+    )
+    try:
+        httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={})
+        transport.request("GET", PATH)
+    finally:
+        transport.close()
     request = httpx_mock.get_request()
     assert request is not None
     assert "anthropic-version" not in request.headers
@@ -152,7 +193,7 @@ async def test_async_injects_default_headers(
     request = httpx_mock.get_request()
     assert request is not None
     assert request.headers["x-api-key"] == API_KEY
-    assert "anthropic-version" not in request.headers
+    assert request.headers["anthropic-version"] == "2023-06-01"
 
 
 def test_per_request_headers_merge_over_defaults(
@@ -396,3 +437,68 @@ async def test_public_async_client_delegates_aclose_to_transport(
     monkeypatch.setattr(client._transport, "aclose", fake_aclose)  # noqa: SLF001
     await client.aclose()
     assert closed["count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Rate-limit header observation
+# ---------------------------------------------------------------------------
+
+
+def test_rate_limit_is_none_before_any_request(sync_transport: SyncTransport) -> None:
+    assert sync_transport.rate_limit is None
+
+
+def test_rate_limit_is_populated_from_response_headers(
+    sync_transport: SyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        json={},
+        headers={
+            "anthropic-ratelimit-requests-limit": "600",
+            "anthropic-ratelimit-requests-remaining": "417",
+            "anthropic-ratelimit-requests-reset": "2026-04-21T14:38:25Z",
+        },
+    )
+    sync_transport.request("GET", PATH)
+    snapshot = sync_transport.rate_limit
+    assert snapshot is not None
+    assert snapshot.limit == 600
+    assert snapshot.remaining == 417
+
+
+def test_rate_limit_is_observed_on_error_responses_too(
+    sync_transport: SyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    # A 403 consumes a quota unit, so its headers still matter.
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        status_code=403,
+        json={"error": {"type": "permission_error", "message": "Missing required scopes."}},
+        headers={"anthropic-ratelimit-requests-remaining": "12"},
+    )
+    with pytest.raises(InsufficientScopeError):
+        sync_transport.request("GET", PATH)
+    assert sync_transport.rate_limit is not None
+    assert sync_transport.rate_limit.remaining == 12
+
+
+def test_rate_limit_stays_none_when_headers_absent(
+    sync_transport: SyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(url=f"{BASE_URL}{PATH}", json={})
+    sync_transport.request("GET", PATH)
+    assert sync_transport.rate_limit is None
+
+
+async def test_async_rate_limit_is_populated(
+    async_transport: AsyncTransport, httpx_mock: HTTPXMock
+) -> None:
+    httpx_mock.add_response(
+        url=f"{BASE_URL}{PATH}",
+        json={},
+        headers={"anthropic-ratelimit-requests-remaining": "99"},
+    )
+    await async_transport.request("GET", PATH)
+    assert async_transport.rate_limit is not None
+    assert async_transport.rate_limit.remaining == 99

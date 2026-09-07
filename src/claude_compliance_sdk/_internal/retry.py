@@ -9,6 +9,9 @@ attempt. The sleep itself is the caller's responsibility — sync
 Retry semantics:
 
 * Retry on HTTP 429, 500, 502, 503, 504, 529.
+* An exception carrying ``retryable = False`` is never retried, even on
+  a status in the set above. Used where one status covers both
+  transient and permanent conditions.
 * A response's ``x-should-retry`` header overrides the status set:
   ``false`` suppresses a retry that would otherwise happen (a
   deterministic failure), ``true`` forces one — both still gated on
@@ -19,10 +22,15 @@ Retry semantics:
   POST/PUT/PATCH the request may have been applied server-side, so a
   blind retry could double-write.
 * Backoff is ``base_delay * 2**retry_index`` capped at ``cap_delay``,
-  with symmetric ``±jitter_ratio`` jitter added.
-* On 429 the ``Retry-After`` header (already parsed onto
-  `RateLimitError`) overrides the
-  backoff schedule.
+  with symmetric ``±jitter_ratio`` jitter added. The defaults (1s
+  doubling to 60s) match the fallback the API documents for a 429 with
+  no ``Retry-After``.
+* A ``Retry-After`` hint is a **floor**, not a replacement. The shared
+  rate-limit budget returns a realistic wait that will dominate early
+  attempts, but the remote-session endpoints' second budget always
+  returns ``retry-after: 1`` as a *minimum* — treating that as the
+  whole delay retried three times in three seconds and exhausted the
+  budget without ever waiting long enough to help.
 """
 
 from __future__ import annotations
@@ -32,8 +40,8 @@ from dataclasses import dataclass, field
 
 import httpx
 
-DEFAULT_BASE_DELAY = 0.5
-DEFAULT_CAP_DELAY = 20.0
+DEFAULT_BASE_DELAY = 1.0
+DEFAULT_CAP_DELAY = 60.0
 DEFAULT_JITTER_RATIO = 0.25
 
 RETRYABLE_STATUSES = frozenset({429, 500, 502, 503, 504, 529})
@@ -69,6 +77,7 @@ class RetryPolicy:
         method: str,
         status_code: int,
         should_retry_header: bool | None = None,
+        error_retryable: bool | None = None,
     ) -> bool:
         """Return ``True`` if a non-2xx response should be retried.
 
@@ -84,13 +93,22 @@ class RetryPolicy:
             should_retry_header: Parsed value of the server's
                 ``x-should-retry`` header — ``True``/``False`` when
                 present, ``None`` when absent. When set, it overrides
-                the default status set: the server's explicit signal
-                wins. Still gated on method safety.
+                everything below: the server's explicit signal wins.
+                Still gated on method safety.
+            error_retryable: The mapped exception's ``retryable``
+                marker. ``False`` suppresses a retry that the status
+                set would otherwise allow, for failures that share a
+                retryable status but are not transient — a
+                local-session 503 about retention overrides being the
+                case this exists for. Ranks below the server's header
+                and above the status set.
         """
         if retry_index >= self.max_retries:
             return False
         if should_retry_header is not None:
             return should_retry_header and method.upper() in SAFE_METHODS
+        if error_retryable is False:
+            return False
         if method.upper() not in SAFE_METHODS:
             return False
         return status_code in RETRYABLE_STATUSES
@@ -116,13 +134,20 @@ class RetryPolicy:
         Args:
             retry_index: 0-indexed retry count. ``retry_index=0`` is
                 the first retry, ``retry_index=1`` the second, etc.
-            retry_after: If supplied, overrides the backoff schedule.
-                Used to honour the server's ``Retry-After`` hint on a
-                429.
+            retry_after: The server's ``Retry-After`` hint in seconds,
+                if it sent one. Treated as a **floor**: the result is
+                never shorter than this, but the backoff schedule still
+                escalates past it. That matters because the
+                remote-session budget always returns ``1`` as a
+                minimum wait rather than an actual reset time.
+
+        Returns:
+            Seconds to sleep. Jitter is applied to the backoff, not to
+            the floor, so a server-specified wait is never undercut.
         """
-        if retry_after is not None:
-            return max(0.0, retry_after)
         backoff = min(self.cap_delay, self.base_delay * (2**retry_index))
         jitter = backoff * self.jitter_ratio
-        jittered: float = backoff + self._rng.uniform(-jitter, jitter)
-        return max(0.0, jittered)
+        jittered: float = max(0.0, backoff + self._rng.uniform(-jitter, jitter))
+        if retry_after is None:
+            return jittered
+        return max(0.0, retry_after, jittered)

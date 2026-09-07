@@ -11,13 +11,13 @@ The Compliance API requires an Enterprise plan, and primary owners can enable it
 
 ## Features
 
-- Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, and Organisations.
+- Complete coverage of all Compliance API endpoints, including the Activity Feed, Chats, Messages, Files, Projects, Groups, Users, Roles, Permissions, Organisations, and session transcripts from Cowork and Claude Code.
 - Full sync + async parity. Every resource method is available on both `ComplianceClient` and `AsyncComplianceClient` under the same name.
 - Typed responses as plain dataclasses. Unknown response fields are preserved in an `extra: dict` so a future API revision adding a field cannot break the SDK.
-- Built-in retry with exponential backoff that honours `Retry-After`, plus a client-side sliding-window rate limiter that matches the server's 600 RPM cap.
+- Built-in retry with exponential backoff that treats `Retry-After` as a floor, plus rate limiting driven by the server's own `anthropic-ratelimit-*` headers — the client waits for the stated reset instead of spending a request to discover a 429.
 - Streamed downloads with a configurable memory ceiling — switch from eager bytes to `download_to_file()` or `download_stream()` for anything larger.
 - Typed exception hierarchy. Every API error maps to a catchable class — `InvalidAPIKeyError`, `InsufficientScopeError`, `NotFoundError`, `ConflictError`, `RateLimitError`, and the rest.
-- Tracks the hosted [Anthropic Compliance API spec](https://platform.claude.com/docs/en/api/compliance).
+- Tracks the hosted [Anthropic Compliance API docs](https://platform.claude.com/docs/en/manage-claude/compliance-api), snapshotted under `spec-snapshots/` so upstream changes are visible as a diff.
 
 ## Requirements
 Python 3.11+.
@@ -47,7 +47,7 @@ Full API reference docs are available at [papermtn.github.io/claude-compliance-s
 ```python
 from claude_compliance_sdk import ComplianceClient
 
-with ComplianceClient(api_key="sk-ant-admin01-...") as client:
+with ComplianceClient(api_key="sk-ant-api01-...") as client:
     for activity in client.activities.iter(
         activity_types=["claude_chat_created", "api_key_created"],
         limit=100,
@@ -64,7 +64,7 @@ from claude_compliance_sdk import AsyncComplianceClient
 
 
 async def main() -> None:
-    async with AsyncComplianceClient(api_key="sk-ant-admin01-...") as client:
+    async with AsyncComplianceClient(api_key="sk-ant-api01-...") as client:
         async for activity in client.activities.iter(limit=100):
             print(activity.created_at, activity.type)
 
@@ -78,43 +78,70 @@ done.
 
 ## Authentication
 
-The Compliance API uses **Compliance Access Keys** (prefix
-`sk-ant-api01-...`), created by your organisation's Primary Owner from
-Claude.ai under **Settings → Data Management → Compliance access keys**.
-At creation time the key is granted one or more of the following
-scopes; the scope set is fixed for the lifetime of the key:
+Two key types reach the Compliance API, and which you need depends on
+what you are querying.
+
+| Key type | Created in | Reaches |
+| --- | --- | --- |
+| **Compliance Access Key** (`sk-ant-api01-...`) | claude.ai → Organization settings → API | Every endpoint |
+| **Admin API key** (`sk-ant-admin01-...`) | Claude Console → Settings → Admin keys | The Activity Feed **only** — everything else returns 403 |
+
+A Compliance Access Key is created by a primary owner or organisation
+owner. A primary owner's key can cover every organisation under the
+parent; an organisation owner's key covers their own organisation only.
+Admin API keys carry `read:compliance_activities` only if the
+Compliance API was already enabled for the organisation when the key
+was created, and cannot be granted any other Compliance scope.
+
+Scopes are chosen at creation and are **immutable** — to change them,
+create a new key and delete the old one.
 
 | Scope | Unlocks |
 | --- | --- |
 | `read:compliance_activities` | Activity Feed (`activities`) |
-| `read:compliance_user_data` | Chats, messages, file metadata, project data, group members |
-| `delete:compliance_user_data` | Deleting chats and user-uploaded files |
-| `read:compliance_org_data` | Organisations, users, roles, permissions, groups |
+| `read:compliance_user_data` | Chats, messages, files, projects, **session transcripts**, organisation users, group members |
+| `delete:compliance_user_data` | Deleting chats, files, and projects |
+| `read:compliance_org_data` | Organisations, roles, permissions, groups, and effective organisation settings |
+
+Pick the smallest set that works. An audit pipeline that only reads the
+feed needs `read:compliance_activities`. If your workflow both reads
+and deletes, use **two keys** so a leaked read key cannot delete data.
+
+> A key with `read:compliance_user_data` can read every chat, file,
+> project, and session transcript in every linked organisation.
+> Treat these keys like production database credentials.
+
+The separate `read:compliance_org_settings` scope was **retired on
+2026-06-30**. A key carrying only that scope now returns 403 from the
+settings endpoint; `read:compliance_org_data` replaces it.
 
 Authentication and authorisation failures surface as typed exceptions: a
 `401` (invalid or revoked key) becomes `InvalidAPIKeyError`, and a `403`
 becomes `PermissionDeniedError` — refined to `InsufficientScopeError`
-when the key is valid but missing the scope the endpoint needs. Catch
-`PermissionDeniedError` to handle any authorisation failure, or
-`InsufficientScopeError` for the scope-specific case.
+when the key is valid but missing the scope the endpoint needs. The
+403 message names both what the key carries and what the endpoint
+wanted, and is available on `error_message`.
 
 Pass the key when constructing the client:
 
 ```python
 import os
 
-client = ComplianceClient(api_key=os.environ["ANTHROPIC_COMPLIANCE_API_KEY"])
+client = ComplianceClient(api_key=os.environ["ANTHROPIC_COMPLIANCE_ACCESS_KEY"])
 ```
 
 Or set the environment variable and let the client read it:
 
 ```bash
-export ANTHROPIC_COMPLIANCE_API_KEY=sk-ant-api01-...
+export ANTHROPIC_COMPLIANCE_ACCESS_KEY=sk-ant-api01-...
 ```
 
 ```python
 client = ComplianceClient()
 ```
+
+The legacy `ANTHROPIC_COMPLIANCE_API_KEY` name this SDK shipped with is
+still read as a fallback, so existing deployments keep working.
 
 ## Pagination
 
@@ -143,6 +170,42 @@ for project in client.projects.iter(organization_ids=["org_abc123"]):
 
 Cursor resources are identical in shape; the page contains `last_id`
 and you pass it back as `after_id`.
+
+## Session transcripts
+
+Transcripts of the sessions your users run in Claude apps — Cowork,
+Claude Code, Claude Science, and Claude for Microsoft 365 — come from
+two resource groups, split by **where the session ran**:
+
+| Resource group | Covers | ID prefix |
+| --- | --- | --- |
+| `client.local_sessions` | Cowork in Claude Desktop, Claude Code (terminal, desktop, IDE), Claude Science, Claude for Microsoft 365 — all on the user's own machine | `clls_` |
+| `client.remote_sessions` | Cowork started on claude.ai web or mobile, running in Anthropic-managed cloud environments | `cse_` |
+
+If you are looking for Claude Code usage, it is `local_sessions`.
+
+```python
+with ComplianceClient() as client:
+    for session in client.local_sessions.iter(created_at_gte="2026-07-01T00:00:00Z"):
+        if session.product_surface != "claude_code":
+            continue
+        for message in client.local_sessions.iter_messages(session.id):
+            print(session.id, message.role, message.content)
+```
+
+Both groups are read-only — sessions cannot be deleted through the
+Compliance API. Transcript content blocks (`text`, `tool_use`,
+`tool_result`) are returned as plain dicts so block types that have not
+shipped yet pass through rather than breaking parsing. Note that a
+`tool_use` block's `input` is a JSON-encoded *string*, and a truncated
+one is not valid JSON — raise `tool_use_input_max_bytes` (or pass `-1`
+for the server maximum) if you need to parse it.
+
+Two errors are worth catching by name. `LocalSessionsUnavailableError`
+is a 404 meaning the endpoints are off for your parent organisation, not
+that a session is gone — keep your queued IDs and retry later.
+`LocalSessionsRetentionUnavailableError` is a 503 that is *not*
+transient; skip that session and come back to it on a later run.
 
 ## Downloads
 
@@ -179,26 +242,50 @@ except FileTooLargeError as exc:
 User files are deletable (`.delete()`). Generated files and artifacts
 are not.
 
+## Rate limits
+
+The API allows 600 requests per minute per **parent organisation** —
+one budget shared across every key beneath it and every
+`/v1/compliance/*` endpoint. The SDK reads the server's
+`anthropic-ratelimit-*` headers on every response and waits for the
+stated reset once the budget is spent.
+
+```python
+client.activities.list(limit=100)
+
+status = client.rate_limit_status  # None until the first response
+if status and status.remaining is not None and status.remaining < 50:
+    ...  # Slow your workers: the budget is shared with other consumers.
+```
+
+`rate_limit_rpm` caps how fast this client issues requests. `0`
+disables that local window; the server-reported budget is still
+honoured, because it is not something a caller can opt out of.
+
+The remote session endpoints carry a second budget on top of the shared
+one, so a 429 there can arrive well below 600 rpm.
+
 ## Configuration
 
 `ComplianceClient` and `AsyncComplianceClient` accept the same kwargs:
 
 | Kwarg | Default | What it does |
 | --- | --- | --- |
-| `api_key` | env `ANTHROPIC_COMPLIANCE_API_KEY` | Bearer credential. |
+| `api_key` | env `ANTHROPIC_COMPLIANCE_ACCESS_KEY`, then `ANTHROPIC_COMPLIANCE_API_KEY` | Compliance Access Key or Admin API key. |
 | `base_url` | `https://api.anthropic.com` | Override for testing. |
 | `timeout` | `30.0` | Per-request timeout, seconds. |
 | `max_download_bytes` | `100 * 1024 * 1024` | Eager-download cap. |
 | `max_retries` | `3` | Retry attempts on 429/5xx and connect errors. `0` disables. |
-| `rate_limit_rpm` | `600` | Best-effort, per-client burst smoothing. `0` disables. See the note below. |
+| `rate_limit_rpm` | `600` | Local burst smoothing for this client. `0` disables the local window. See the note below. |
+| `anthropic_version` | `"2023-06-01"` | Sent as the `anthropic-version` header on every request. `None` suppresses it. |
 
-> **On `rate_limit_rpm`:** the limiter is per-client and best-effort — it
-> smooths bursts from a single client instance. The live API enforces
-> **600 RPM per parent organisation**, shared across every key and every
-> `/v1/compliance/*` endpoint, which a per-client limiter can't see. If you
-> run multiple clients under one parent, set `rate_limit_rpm` to
-> `600 / n_clients`, or set it to `0` and rely on the SDK's 429 retry
-> handling.
+> **On `rate_limit_rpm`:** this caps how fast a single client issues
+> requests, which matters for a cold burst before the first response
+> arrives. Once responses start coming back, the SDK throttles on the
+> server's own `anthropic-ratelimit-*` headers instead, so you no
+> longer need to divide 600 by your worker count. Setting `0` disables
+> the local window only — the shared server budget is still honoured.
+> See [Rate limits](#rate-limits).
 
 ## Contributing
 
