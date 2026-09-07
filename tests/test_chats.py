@@ -6,7 +6,7 @@ and .iter() over chats, the combined chat+messages .get() endpoint,
 .iter_messages() driving the same endpoint, and .delete() with
 sync+async parity.
 
-Integration test gated on ANTHROPIC_COMPLIANCE_API_KEY.
+Integration test gated on a live Compliance Access Key.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ from claude_compliance_sdk.resources.chats import (
     _build_messages_params,
     _validate_user_ids,
 )
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -709,12 +710,25 @@ async def test_async_delete(async_client: AsyncComplianceClient, httpx_mock: HTT
 
 
 @pytest.mark.integration
+@requires_live_key
+def test_integration_list_chats_org_wide() -> None:
+    # The org-wide `order_by=updated_at` walk is the shape the docs
+    # recommend and the one the SDK could not express before 0.3.0, so
+    # it is the more valuable thing to verify live.
+    with ComplianceClient() as client:
+        page = client.chats.list(order_by="updated_at", limit=5)
+    assert isinstance(page, CursorPage)
+    for chat in page.data:
+        assert chat.id
+
+
+@pytest.mark.integration
+@requires_live_key
 @pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY")
-    or not os.environ.get("ANTHROPIC_COMPLIANCE_USER_ID"),
-    reason="Requires ANTHROPIC_COMPLIANCE_API_KEY and ANTHROPIC_COMPLIANCE_USER_ID.",
+    not os.environ.get("ANTHROPIC_COMPLIANCE_USER_ID"),
+    reason="Requires ANTHROPIC_COMPLIANCE_USER_ID for the user-filtered form.",
 )
-def test_integration_list_chats() -> None:
+def test_integration_list_chats_for_a_user() -> None:
     user_id = os.environ["ANTHROPIC_COMPLIANCE_USER_ID"]
     with ComplianceClient() as client:
         page = client.chats.list(user_ids=[user_id], limit=5)

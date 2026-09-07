@@ -6,7 +6,8 @@ and the most likely error path (``InsufficientScopeError`` from the
 admin-key-only-no-scope server response).
 
 The integration test at the bottom hits the live Compliance API when
-``ANTHROPIC_COMPLIANCE_API_KEY`` is set, and is skipped otherwise
+a live Compliance Access Key is set in the environment, and is
+skipped otherwise
 (per CLAUDE.md's testing conventions).
 """
 
@@ -29,6 +30,7 @@ from claude_compliance_sdk.resources.activities import (
     Activity,
     _build_query_params,
 )
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-admin01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -422,15 +424,12 @@ async def test_async_list_propagates_insufficient_scope_error(
 
 
 # ---------------------------------------------------------------------------
-# Integration — live API, skipped unless ANTHROPIC_COMPLIANCE_API_KEY is set
+# Integration — live API, skipped without a live key
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY"),
-    reason="Requires ANTHROPIC_COMPLIANCE_API_KEY for live API access.",
-)
+@requires_live_key
 def test_integration_list_one_page() -> None:
     with ComplianceClient() as client:
         page = client.activities.list(limit=5)

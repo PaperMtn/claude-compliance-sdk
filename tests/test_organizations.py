@@ -4,7 +4,7 @@ Covers Organization and User dataclasses, the offset-paginated
 list() / iter() and list_users() / iter_users() pairs, and sync+async
 parity throughout.
 
-Integration test gated on ANTHROPIC_COMPLIANCE_API_KEY.
+Integration test gated on a live Compliance Access Key.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from claude_compliance_sdk.resources.organizations import (
     User,
     _build_page_params,
 )
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -402,10 +403,7 @@ async def test_async_iter_users_walks_pages(
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY"),
-    reason="Requires ANTHROPIC_COMPLIANCE_API_KEY for live API access.",
-)
+@requires_live_key
 def test_integration_list_organizations() -> None:
     with ComplianceClient() as client:
         page = client.organizations.list()

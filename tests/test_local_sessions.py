@@ -8,7 +8,7 @@ derivation for payloads that omit the field, every documented
 provenance shape plus an unrecognised one, the truncation-cap guard,
 the message-refined 404 and 503 mappings, and sync+async parity.
 
-Integration test gated on ANTHROPIC_COMPLIANCE_API_KEY.
+Integration test gated on a live Compliance Access Key.
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from claude_compliance_sdk.resources.local_sessions import (
     LOCAL_SESSIONS_PATH,
     LocalSessionTranscript,
 )
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-api01-test"
 BASE_URL = "https://api.anthropic.test"
@@ -491,10 +492,7 @@ async def test_async_local_sessions_unavailable(
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY"),
-    reason="requires ANTHROPIC_COMPLIANCE_API_KEY",
-)
+@requires_live_key
 def test_integration_list_local_sessions() -> None:
     with ComplianceClient() as client:
         page = client.local_sessions.list(limit=1)

@@ -7,7 +7,7 @@ Covers the two endpoints, the user/agent ownership split, the id-filter
 length caps, the transcript envelope, the pending-session 404, and
 sync+async parity.
 
-Integration test gated on ANTHROPIC_COMPLIANCE_API_KEY.
+Integration test gated on a live Compliance Access Key.
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ from claude_compliance_sdk.resources.remote_sessions import (
     REMOTE_SESSIONS_PATH,
     RemoteSessionTranscript,
 )
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-api01-test"
 BASE_URL = "https://api.anthropic.test"
@@ -393,10 +394,7 @@ async def test_async_iter_messages(
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY"),
-    reason="requires ANTHROPIC_COMPLIANCE_API_KEY",
-)
+@requires_live_key
 def test_integration_list_remote_sessions() -> None:
     with ComplianceClient() as client:
         page = client.remote_sessions.list(limit=1)

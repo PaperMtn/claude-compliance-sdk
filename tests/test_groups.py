@@ -10,6 +10,7 @@ from pytest_httpx import HTTPXMock
 
 from claude_compliance_sdk import AsyncComplianceClient, ComplianceClient, NotFoundError, OffsetPage
 from claude_compliance_sdk.resources.groups import GROUPS_PATH, Group, GroupMember
+from tests.conftest import requires_live_key
 
 API_KEY = "sk-ant-api01-test-key"
 BASE_URL = "https://api.test.invalid"
@@ -276,10 +277,7 @@ async def test_async_iter_members(
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.environ.get("ANTHROPIC_COMPLIANCE_API_KEY"),
-    reason="Requires ANTHROPIC_COMPLIANCE_API_KEY.",
-)
+@requires_live_key
 def test_integration_list_groups() -> None:
     with ComplianceClient() as client:
         page = client.groups.list(limit=5)
