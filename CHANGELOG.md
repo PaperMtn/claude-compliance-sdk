@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-07
+
 ### Added
 
 - **Session transcripts** — two new resource groups covering Cowork,
@@ -97,6 +99,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and documented as deprecated by the API in favour of
   `organization_uuid`.
 
+- **Documentation** — the key model is now described the right way
+  round. A **Compliance Access Key** (`sk-ant-api01-...`, created in
+  claude.ai) reaches every endpoint and is the primary credential; an
+  **Admin API key** reaches the Activity Feed *only* and 403s
+  elsewhere. Previously the README and the `activities` docstrings
+  implied the Activity Feed was admin-key territory, which is
+  backwards. All four live scopes are now documented, along with the
+  retirement of `read:compliance_org_settings` on 2026-06-30.
+- The client now reads `ANTHROPIC_COMPLIANCE_ACCESS_KEY`, the name the
+  hosted docs use. The legacy `ANTHROPIC_COMPLIANCE_API_KEY` this SDK
+  shipped with is still honoured as a fallback, so existing
+  deployments keep working; the new name wins when both are set.
+- Retry backoff defaults moved from 0.5s base / 20s cap to **1s base /
+  60s cap**, matching the fallback the API documents for a 429 with no
+  `Retry-After` header. Retries are correspondingly slower.
+
+### Deprecated
+
+- Combining `user_ids` with any `updated_at` bound on `chats.list()` /
+  `chats.iter()` now raises a `DeprecationWarning`. The API rejects the
+  combination with HTTP 400 after 2026-09-22; use an organisation-wide
+  `order_by="updated_at"` walk instead.
+
 ### Fixed
 
 - The client now throttles on the server's reported budget. When a
@@ -122,30 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than load, so the previous behaviour spent the whole retry
   budget on a failure that fails identically every time.
 
-### Changed
-
-- **Documentation** — the key model is now described the right way
-  round. A **Compliance Access Key** (`sk-ant-api01-...`, created in
-  claude.ai) reaches every endpoint and is the primary credential; an
-  **Admin API key** reaches the Activity Feed *only* and 403s
-  elsewhere. Previously the README and the `activities` docstrings
-  implied the Activity Feed was admin-key territory, which is
-  backwards. All four live scopes are now documented, along with the
-  retirement of `read:compliance_org_settings` on 2026-06-30.
-- The client now reads `ANTHROPIC_COMPLIANCE_ACCESS_KEY`, the name the
-  hosted docs use. The legacy `ANTHROPIC_COMPLIANCE_API_KEY` this SDK
-  shipped with is still honoured as a fallback, so existing
-  deployments keep working; the new name wins when both are set.
-- Retry backoff defaults moved from 0.5s base / 20s cap to **1s base /
-  60s cap**, matching the fallback the API documents for a 429 with no
-  `Retry-After` header. Retries are correspondingly slower.
-
-### Deprecated
-
-- Combining `user_ids` with any `updated_at` bound on `chats.list()` /
-  `chats.iter()` now raises a `DeprecationWarning`. The API rejects the
-  combination with HTTP 400 after 2026-09-22; use an organisation-wide
-  `order_by="updated_at"` walk instead.
+## [0.2.0] - 2026-06-08
 
 ### Added
 
@@ -249,5 +251,7 @@ Initial release. Targets Compliance API spec revision Rev K
 - **Documentation site** at
   [papermtn.github.io/claude-compliance-sdk](https://papermtn.github.io/claude-compliance-sdk/).
 
-[Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/PaperMtn/claude-compliance-sdk/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/PaperMtn/claude-compliance-sdk/releases/tag/v0.1.0
